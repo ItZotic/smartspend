@@ -11,7 +11,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController emailController = TextEditingController();
 
-  void _resetPassword() {
+  Future<void> _resetPassword() async {
     String email = emailController.text.trim();
 
     if (email.isEmpty) {
@@ -20,12 +20,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _showSnackBar('Please enter a valid email address');
     } else {
       _showSnackBar('Password reset link sent to $email');
-      Future.delayed(const Duration(seconds: 2), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      });
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
     }
   }
 
