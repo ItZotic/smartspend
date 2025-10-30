@@ -22,6 +22,9 @@ class MyApp extends StatelessWidget {
       title: 'SmartSpend',
       theme: ThemeData(primarySwatch: Colors.green),
       home: const LoginScreen(),
+      routes: {
+        '/main_menu': (context) => const MainMenuScreen(),
+      },
     );
   }
 }
