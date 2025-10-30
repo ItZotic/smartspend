@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'login.dart';
+import 'services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -10,8 +12,9 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController emailController = TextEditingController();
+  final AuthService _authService = AuthService();
 
-  void _resetPassword() {
+  Future<void> _resetPassword() async {
     String email = emailController.text.trim();
 
     if (email.isEmpty) {
@@ -19,13 +22,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } else if (!email.contains('@') || !email.contains('.')) {
       _showSnackBar('Please enter a valid email address');
     } else {
-      _showSnackBar('Password reset link sent to $email');
-      Future.delayed(const Duration(seconds: 2), () {
+      try {
+        await _authService.sendPasswordResetEmail(email);
+        if (!mounted) return;
+        _showSnackBar('Password reset link sent to $email');
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
-      });
+      } on AuthException catch (e) {
+        _showSnackBar(e.message);
+      } catch (_) {
+        _showSnackBar('Failed to send password reset email. Please try again later.');
+      }
     }
   }
 
