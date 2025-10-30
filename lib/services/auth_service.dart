@@ -17,8 +17,6 @@ class AuthService {
 
   factory AuthService() => _instance;
 
-  static AuthService get instance => _instance;
-
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
 
@@ -29,17 +27,16 @@ class AuthService {
     String password, {
     Map<String, dynamic>? profileData,
   }) async {
-    final normalizedEmail = _normalizeEmail(email);
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
-        email: normalizedEmail,
+        email: email,
         password: password,
       );
       final user = credential.user;
       if (user != null) {
         await _firestore.collection('users').doc(user.uid).set(
           {
-            'email': normalizedEmail,
+            'email': user.email,
             'createdAt': FieldValue.serverTimestamp(),
             if (profileData != null) ...profileData,
           },
@@ -55,10 +52,9 @@ class AuthService {
   }
 
   Future<User?> login(String email, String password) async {
-    final normalizedEmail = _normalizeEmail(email);
     try {
       final credential = await _auth.signInWithEmailAndPassword(
-        email: normalizedEmail,
+        email: email,
         password: password,
       );
       return credential.user;
@@ -74,9 +70,8 @@ class AuthService {
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
-    final normalizedEmail = _normalizeEmail(email);
     try {
-      await _auth.sendPasswordResetEmail(email: normalizedEmail);
+      await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
       throw AuthException(_mapFirebaseAuthException(e));
     } catch (_) {
@@ -85,8 +80,6 @@ class AuthService {
       );
     }
   }
-
-  String _normalizeEmail(String email) => email.trim();
 
   String _mapFirebaseAuthException(FirebaseAuthException exception) {
     switch (exception.code) {
@@ -100,10 +93,6 @@ class AuthService {
         return 'No user found for the provided email.';
       case 'wrong-password':
         return 'Incorrect password. Please try again.';
-      case 'invalid-credential':
-        return 'The provided credentials are invalid.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
       case 'email-already-in-use':
         return 'An account already exists for that email.';
       case 'weak-password':
@@ -115,4 +104,3 @@ class AuthService {
     }
   }
 }
-

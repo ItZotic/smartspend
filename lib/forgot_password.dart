@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:smartspend/services/auth_service.dart';
-
 import 'login.dart';
+import 'services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -13,10 +12,10 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController emailController = TextEditingController();
-  final AuthService _authService = AuthService.instance;
+  final AuthService _authService = AuthService();
 
   Future<void> _resetPassword() async {
-    final email = emailController.text.trim();
+    String email = emailController.text.trim();
 
     if (email.isEmpty) {
       _showSnackBar('Please enter your email address');
@@ -33,18 +32,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
-      } on AuthException catch (e) {
+
+ } on AuthException catch (e) {
         _showSnackBar(e.message);
       } catch (_) {
         _showSnackBar('Failed to send password reset email. Please try again later.');
       }
-    }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.blue),
-    );
   }
 
   @override
