@@ -1,6 +1,6 @@
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
-
+import 'forgot_password.dart';
 import 'package:smartspend/services/auth_service.dart';
 
 import 'forgot_password.dart';
@@ -34,12 +34,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       _showSnackBar('Please fill in all fields');
-      return;
+return;
     }
 
     if (password.length < 8) {
       _showSnackBar('Password must be at least 8 characters long');
-      return;
+    return;
     }
 
     try {
@@ -309,7 +309,7 @@ Widget _buildSocialButton({
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha:0.1),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),

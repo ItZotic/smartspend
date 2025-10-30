@@ -32,18 +32,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
-      } on AuthException catch (e) {
+
+ } on AuthException catch (e) {
         _showSnackBar(e.message);
       } catch (_) {
         _showSnackBar('Failed to send password reset email. Please try again later.');
       }
-    }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.blue),
-    );
   }
 
   @override
