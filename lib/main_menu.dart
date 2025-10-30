@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:smartspend/screens/home_screen.dart';
-import 'home.dart' hide HomeScreen;
-import 'budget.dart';
-import 'analytics.dart';
+
 import 'accounts.dart';
-import 'settings.dart';
+import 'analytics.dart';
+import 'budget.dart';
+import 'home.dart';
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
@@ -16,12 +15,12 @@ class MainMenuScreen extends StatefulWidget {
 class _MainMenuScreenState extends State<MainMenuScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    HomeScreen(onNavigate: (String p1) {  },),
-    BudgetScreen(),
-    AnalyticsScreen(),
-    AccountsScreen(),
-    SettingsScreen(),
+  static final List<Widget> _screens = <Widget>[
+    const HomeScreen(),
+    const BudgetScreen(),
+    const AnalyticsScreen(),
+    const AccountsScreen(),
+    const SettingsScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -52,7 +51,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 }
-// ...existing code...
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -61,57 +60,6 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: const Center(child: Text('Settings Screen')),
-    );
-  }
-}
-// ...existing code...
-// ...existing code...
-  final List<Widget> _screens = [
-    const AnalyticsScreen(),
-    const AccountsScreen(),
-    const SettingsScreen(),
-  ];
-// ...existing code...
-
-class AccountsScreen extends StatelessWidget {
-  const AccountsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Accounts')),
-      body: const Center(child: Text('Accounts Screen')),
-    );
-  }
-}
-// ...existing code...
-class AnalyticsScreen extends StatelessWidget {
-  const AnalyticsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics'),
-      ),
-      body: const Center(
-        child: Text('Analytics Dashboard'),
-      ),
-    );
-  }
-}
-class BudgetScreen extends StatelessWidget {
-  const BudgetScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Budget'),
-      ),
-      body: const Center(
-        child: Text('Budget Screen Content'),
-      ),
     );
   }
 }
