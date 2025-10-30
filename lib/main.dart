@@ -1,9 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import 'firebase_options.dart';
-import 'login.dart';
-import 'main_menu.dart';
+import 'package:smartspend/firebase_options.dart';
+import 'package:smartspend/login.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
