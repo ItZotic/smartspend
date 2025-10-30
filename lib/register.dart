@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -62,11 +61,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      await _authService.register(email, password);
+      await _authService.register(
+        email,
+        password,
+        profileData: {
+          'fullName': fullName,
+          'username': username,
+        },
+      );
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main_menu');
-    } on FirebaseAuthException catch (e) {
-      _showSnackBar(e.message ?? 'Failed to register');
+    } on AuthException catch (e) {
+      _showSnackBar(e.message);
     } catch (e) {
       _showSnackBar('Failed to register. Please try again later.');
     }

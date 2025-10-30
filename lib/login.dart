@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
 
@@ -47,8 +46,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await _authService.login(email, password);
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main_menu');
-    } on FirebaseAuthException catch (e) {
-      _showSnackBar(e.message ?? 'Failed to login');
+    } on AuthException catch (e) {
+      _showSnackBar(e.message);
     } catch (e) {
       _showSnackBar('Failed to login. Please try again later.');
     }
