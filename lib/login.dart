@@ -1,4 +1,3 @@
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
 import 'forgot_password.dart';
 import 'package:smartspend/services/auth_service.dart';
@@ -318,7 +317,7 @@ Widget _buildSocialButton({
       child: Center(
         child: FaIcon(icon, color: iconColor, size: 26),
       ),
-    ),
-  );
+    );
+  }
 }
 }
