@@ -1,8 +1,10 @@
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
 import 'forgot_password.dart';
-import 'main_menu.dart';
-import 'signup.dart';
+import 'package:smartspend/services/auth_service.dart';
+
+import 'forgot_password.dart';
+import 'register.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,19 +19,37 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isPasswordVisible = false;
 
-  void _login() {
-    String username = usernameController.text.trim();
-    String password = passwordController.text;
+  final AuthService _authService = AuthService();
 
-    if (username.isEmpty || password.isEmpty) {
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final email = usernameController.text.trim();
+    final password = passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
       _showSnackBar('Please fill in all fields');
-    } else if (password.length < 8) {
+return;
+    }
+
+    if (password.length < 8) {
       _showSnackBar('Password must be at least 8 characters long');
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainMenuScreen()),
-      );
+    return;
+    }
+
+    try {
+      await _authService.login(email, password);
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/main_menu');
+    } on AuthException catch (e) {
+      _showSnackBar(e.message);
+    } catch (e) {
+      _showSnackBar('Failed to login. Please try again later.');
     }
   }
 
@@ -247,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const SignupScreen(),
+                                  builder: (context) => const RegisterScreen(),
                                 ),
                               );
                             },
