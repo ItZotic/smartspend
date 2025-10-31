@@ -1,7 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:smartspend/services/firestore_service.dart';
+
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.onAddTransaction, FirestoreService? firestoreService})
+      : _firestoreService = firestoreService;
+
+  final VoidCallback? onAddTransaction;
+  final FirestoreService? _firestoreService;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +112,7 @@ class HomeScreen extends StatelessWidget {
                     time: "6:45 PM",
                     date: "Oct 23",
                   ),
+                  _buildTransactionsList(),
                 ],
               ),
             ),
@@ -114,12 +123,63 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 10),
             child: FloatingActionButton(
               backgroundColor: Colors.green,
-              onPressed: () {},
+              onPressed: onAddTransaction ?? () {},
               child: const Icon(Icons.add, size: 30),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTransactionsList() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      return const SizedBox.shrink();
+    }
+
+    final service = _firestoreService ?? FirestoreService();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: service.streamTransactions(uid: uid),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final docs = snapshot.data!.docs;
+        if (docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return ListView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          itemCount: docs.length,
+          itemBuilder: (_, index) {
+            final data = docs[index].data();
+            final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+            final type = data['type'] as String? ?? '';
+            final note = (data['note'] as String?)?.trim() ?? '';
+            final timestamp = data['date'];
+            DateTime? transactionDate;
+            if (timestamp is Timestamp) {
+              transactionDate = timestamp.toDate();
+            }
+
+            return ListTile(
+              dense: true,
+              title: Text('$type  •  ${amount.toStringAsFixed(2)}'),
+              subtitle: Text(
+                note.isEmpty
+                    ? '${transactionDate ?? ''}'
+                    : '$note  •  ${transactionDate ?? ''}',
+              ),
+              contentPadding: EdgeInsets.zero,
+            );
+          },
+        );
+      },
     );
   }
 
@@ -139,7 +199,7 @@ class HomeScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 5, spreadRadius: 2),
+          BoxShadow(color: Colors.grey.withValues(alpha: 0.2), blurRadius: 5, spreadRadius: 2),
         ],
       ),
       child: Row(

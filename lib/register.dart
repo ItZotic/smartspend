@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'main_menu.dart';
+
+import 'package:smartspend/services/auth_service.dart';
+
 import 'login.dart';
 
-class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -20,12 +22,24 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
-  void _signup() {
-    String fullName = fullNameController.text.trim();
-    String username = usernameController.text.trim();
-    String email = emailController.text.trim();
-    String password = passwordController.text;
-    String confirmPassword = confirmPasswordController.text;
+  final AuthService _authService = AuthService.instance;
+
+  @override
+  void dispose() {
+    fullNameController.dispose();
+    usernameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _register() async {
+    final fullName = fullNameController.text.trim();
+    final username = usernameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
 
     if (fullName.isEmpty ||
         username.isEmpty ||
@@ -33,15 +47,34 @@ class _SignupScreenState extends State<SignupScreen> {
         password.isEmpty ||
         confirmPassword.isEmpty) {
       _showSnackBar('Please fill in all fields');
-    } else if (password.length < 8) {
+      return;
+    }
+
+    if (password.length < 8) {
       _showSnackBar('Password must be at least 8 characters long');
-    } else if (password != confirmPassword) {
+      return;
+    }
+
+    if (password != confirmPassword) {
       _showSnackBar('Passwords do not match');
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainMenuScreen()),
+      return;
+    }
+
+    try {
+      await _authService.register(
+        email,
+        password,
+        profileData: {
+          'fullName': fullName,
+          'username': username,
+        },
       );
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/main_menu');
+    } on AuthException catch (e) {
+      _showSnackBar(e.message);
+    } catch (e) {
+      _showSnackBar('Failed to register. Please try again later.');
     }
   }
 
@@ -208,7 +241,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: _signup,
+                          onPressed: _register,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2B65EC),
                             shape: RoundedRectangleBorder(
@@ -216,7 +249,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ),
                           child: const Text(
-                            'Sign Up',
+                            'Register',
                             style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
                         ),
@@ -332,3 +365,4 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
+
