@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'login.dart';
-import 'services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -13,149 +12,91 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController emailController = TextEditingController();
-  final AuthService _authService = AuthService();
+  bool _isLoading = false;
 
   Future<void> _resetPassword() async {
-    String email = emailController.text.trim();
-
+    setState(() => _isLoading = true);
+    final email = emailController.text.trim();
     if (email.isEmpty) {
-      _showSnackBar('Please enter your email address');
-    } else if (!email.contains('@') || !email.contains('.')) {
-      _showSnackBar('Please enter a valid email address');
-    } else {
-      try {
-        await _authService.sendPasswordResetEmail(email);
-        if (!mounted) return;
-        _showSnackBar('Password reset link sent to $email');
-        await Future.delayed(const Duration(seconds: 2));
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
+      _showSnackBar('Please enter your email');
+      setState(() => _isLoading = false);
+      return;
+    }
 
- } on AuthException catch (e) {
-        _showSnackBar(e.message);
-      } catch (_) {
-        _showSnackBar('Failed to send password reset email. Please try again later.');
-      }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      _showSnackBar('Password reset link sent to $email', color: Colors.green);
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message = 'Failed to send reset email';
+      if (e.code == 'user-not-found') message = 'No user found with this email';
+      _showSnackBar(message);
+    } catch (_) {
+      _showSnackBar('An error occurred. Please try again');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackBar(String message, {Color color = Colors.red}) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2B65EC),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Column(
-                children: const [
-                  Icon(Icons.lock_reset, color: Colors.white, size: 80),
-                  SizedBox(height: 10),
-                  Text(
-                    'Forgot Password',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_reset, size: 80, color: Colors.green),
+              const SizedBox(height: 20),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  prefixIcon: Icon(Icons.email),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: Container(
+              const SizedBox(height: 20),
+              SizedBox(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(40),
-                    topRight: Radius.circular(40),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Reset your password',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Enter your registered email address below and we\'ll send you a link to reset your password.',
-                      style: TextStyle(color: Colors.black54, fontSize: 14),
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: 'Email Address',
-                        prefixIcon: const Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _resetPassword,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2B65EC),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _resetPassword,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
                           'Send Reset Link',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
+                          style: TextStyle(fontSize: 18),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Remembered your password?"),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const LoginScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Login',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2B65EC),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 15),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+                child: const Text('Back to Login'),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-

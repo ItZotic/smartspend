@@ -1,14 +1,20 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'login.dart';
+import 'register.dart';
+import 'main_menu.dart';
 
-import 'package:smartspend/firebase_options.dart';
-import 'package:smartspend/login.dart';
-
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization error: $e');
+  }
+
   runApp(const MyApp());
 }
 
@@ -20,9 +26,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'SmartSpend',
-      theme: ThemeData(primarySwatch: Colors.green),
-      home: const LoginScreen(),
+      initialRoute: '/',
       routes: {
+        '/': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
         '/main_menu': (context) => const MainMenuScreen(),
       },
     );
