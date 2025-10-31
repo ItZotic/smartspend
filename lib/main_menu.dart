@@ -1,9 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:smartspend/services/firestore_service.dart';
-import 'package:smartspend/widgets/add_transaction_sheet.dart';
-
 import 'accounts.dart';
 import 'analytics.dart';
 import 'budget.dart';
@@ -18,7 +15,14 @@ class MainMenuScreen extends StatefulWidget {
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
   int _selectedIndex = 0;
-  final FirestoreService _firestoreService = FirestoreService();
+
+  static final List<Widget> _screens = <Widget>[
+    const HomeScreen(),
+    const BudgetScreen(),
+    const AnalyticsScreen(),
+    const AccountsScreen(),
+    const SettingsScreen(),
+  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -89,4 +93,3 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
-

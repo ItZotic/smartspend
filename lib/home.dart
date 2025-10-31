@@ -199,7 +199,7 @@ class HomeScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withValues(alpha: 0.2), blurRadius: 5, spreadRadius: 2),
+          BoxShadow(color: Colors.grey.withValues(alpha:0.2), blurRadius: 5, spreadRadius: 2),
         ],
       ),
       child: Row(

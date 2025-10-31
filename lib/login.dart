@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
+import 'forgot_password.dart';
 import 'package:smartspend/services/auth_service.dart';
 
 import 'forgot_password.dart';
@@ -19,7 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isPasswordVisible = false;
 
-  final AuthService _authService = AuthService.instance;
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -34,12 +33,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       _showSnackBar('Please fill in all fields');
-      return;
+return;
     }
 
     if (password.length < 8) {
       _showSnackBar('Password must be at least 8 characters long');
-      return;
+    return;
     }
 
     try {
@@ -293,32 +292,32 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // 🎨 Helper: Social button widget
-  Widget _buildSocialButton({
-    required Color backgroundColor,
-    required IconData icon,
-    required Color iconColor,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 55,
-        width: 55,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Center(
-          child: FaIcon(icon, color: iconColor, size: 26),
-        ),
+Widget _buildSocialButton({
+  required Color backgroundColor,
+  required IconData icon,
+  required Color iconColor,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      height: 55,
+      width: 55,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha:0.1),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Center(
+        child: FaIcon(icon, color: iconColor, size: 26),
       ),
     );
   }
+}
 }
