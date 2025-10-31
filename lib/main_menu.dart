@@ -1,10 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:smartspend/screens/home_screen.dart';
-import 'home.dart' hide HomeScreen;
-import 'budget.dart';
-import 'analytics.dart';
+
+import 'package:smartspend/services/firestore_service.dart';
+import 'package:smartspend/widgets/add_transaction_sheet.dart';
+
 import 'accounts.dart';
-import 'settings.dart';
+import 'analytics.dart';
+import 'budget.dart';
+import 'home.dart';
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
@@ -15,14 +18,7 @@ class MainMenuScreen extends StatefulWidget {
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
   int _selectedIndex = 0;
-
-  final List<Widget> _screens = [
-    HomeScreen(onNavigate: (String p1) {  },),
-    BudgetScreen(),
-    AnalyticsScreen(),
-    AccountsScreen(),
-    SettingsScreen(),
-  ];
+  final FirestoreService _firestoreService = FirestoreService();
 
   void _onItemTapped(int index) {
     setState(() {
@@ -30,10 +26,39 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     });
   }
 
+  void _openAddTransaction(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in first')),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => const AddTransactionSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screens = <Widget>[
+      HomeScreen(
+        onAddTransaction: () => _openAddTransaction(context),
+        firestoreService: _firestoreService,
+      ),
+      const BudgetScreen(),
+      const AnalyticsScreen(),
+      const AccountsScreen(),
+      const SettingsScreen(),
+    ];
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
@@ -52,7 +77,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 }
-// ...existing code...
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -64,54 +89,4 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
-// ...existing code...
-// ...existing code...
-  final List<Widget> _screens = [
-    const AnalyticsScreen(),
-    const AccountsScreen(),
-    const SettingsScreen(),
-  ];
-// ...existing code...
 
-class AccountsScreen extends StatelessWidget {
-  const AccountsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Accounts')),
-      body: const Center(child: Text('Accounts Screen')),
-    );
-  }
-}
-// ...existing code...
-class AnalyticsScreen extends StatelessWidget {
-  const AnalyticsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics'),
-      ),
-      body: const Center(
-        child: Text('Analytics Dashboard'),
-      ),
-    );
-  }
-}
-class BudgetScreen extends StatelessWidget {
-  const BudgetScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Budget'),
-      ),
-      body: const Center(
-        child: Text('Budget Screen Content'),
-      ),
-    );
-  }
-}
