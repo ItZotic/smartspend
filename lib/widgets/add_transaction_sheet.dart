@@ -209,47 +209,38 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
               child: Text('You must be signed in to manage categories'),
             )
           else
-            Builder(
-              builder: (context) {
-                final currentUser = user!;
-                return Row(
-                  children: [
-                    Expanded(
-                      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                        stream: _firestoreService.streamUserCategories(
-                          uid: currentUser.uid,
-                          type: _type,
-                        ),
-                        builder: (context, snapshot) {
-                          final categories = snapshot.data?.docs ?? [];
-                          return DropdownButtonFormField<String>(
-                            // ignore: deprecated_member_use
-                            value: _selectedCategoryId,
-                            items: categories
-                                .map(
-                                  (doc) => DropdownMenuItem<String>(
-                                    value: doc.id,
-                                    child: Text(doc.data()['name'] as String? ?? 'Unnamed'),
-                                  ),
-                                )
-                                .toList(),
-                            decoration: const InputDecoration(labelText: 'Category'),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedCategoryId = value;
-                              });
-                            },
-                          );
+            Row(
+              children: [
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _firestoreService.streamUserCategories(uid: user.uid, type: _type),
+                    builder: (context, snapshot) {
+                      final categories = snapshot.data?.docs ?? [];
+                      return DropdownButtonFormField<String>(
+                        value: _selectedCategoryId,
+                        items: categories
+                            .map(
+                              (doc) => DropdownMenuItem<String>(
+                                value: doc.id,
+                                child: Text(doc.data()['name'] as String? ?? 'Unnamed'),
+                              ),
+                            )
+                            .toList(),
+                        decoration: const InputDecoration(labelText: 'Category'),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategoryId = value;
+                          });
                         },
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: () => _createCategory(currentUser),
-                    ),
-                  ],
-                );
-              },
+                      );
+                    },
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: user == null ? null : () => _createCategory(user),
+                ),
+              ],
             ),
           const SizedBox(height: 16),
           TextField(
