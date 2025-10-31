@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'accounts.dart';
@@ -29,10 +30,39 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     });
   }
 
+  void _openAddTransaction(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in first')),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => const AddTransactionSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screens = <Widget>[
+      HomeScreen(
+        onAddTransaction: () => _openAddTransaction(context),
+        firestoreService: _firestoreService,
+      ),
+      const BudgetScreen(),
+      const AnalyticsScreen(),
+      const AccountsScreen(),
+      const SettingsScreen(),
+    ];
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
