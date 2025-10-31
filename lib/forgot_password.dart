@@ -1,4 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import 'package:smartspend/services/auth_service.dart';
+
 import 'login.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -10,29 +14,48 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController emailController = TextEditingController();
+  final AuthService _authService = AuthService.instance;
 
-  void _resetPassword() {
-    String email = emailController.text.trim();
+  void _showSnackBar(String message, {Color color = Colors.red}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+      ),
+    );
+  }
+
+  Future<void> _resetPassword() async {
+    final email = emailController.text.trim();
 
     if (email.isEmpty) {
       _showSnackBar('Please enter your email address');
     } else if (!email.contains('@') || !email.contains('.')) {
       _showSnackBar('Please enter a valid email address');
     } else {
-      _showSnackBar('Password reset link sent to $email');
-      Future.delayed(const Duration(seconds: 2), () {
+      try {
+        await _authService.sendPasswordResetEmail(email);
+        _showSnackBar(
+          'Password reset link sent to $email',
+          color: Colors.green,
+        );
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
-      });
+      } on AuthException catch (e) {
+        _showSnackBar(e.message);
+      } catch (e) {
+        _showSnackBar(
+          'Failed to send password reset email. Please try again later.',
+        );
+        debugPrint('Password reset failed: $e');
+      } finally {
+      }
     }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.blue),
-    );
   }
 
   @override
@@ -85,7 +108,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Enter your registered email address below and we’ll send you a link to reset your password.',
+                      'Enter your registered email address below and we\'ll send you a link to reset your password.',
                       style: TextStyle(color: Colors.black54, fontSize: 14),
                     ),
                     const SizedBox(height: 24),
@@ -152,3 +175,4 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 }
+
