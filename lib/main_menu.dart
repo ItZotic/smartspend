@@ -1,10 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
-import 'accounts.dart';
-import 'analytics.dart';
-import 'budget.dart';
 import 'home.dart';
+import 'budget.dart';
+import 'analytics.dart';
+import 'accounts.dart';
+import 'settings.dart';
+import 'services/auth_service.dart';
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
@@ -14,14 +14,16 @@ class MainMenuScreen extends StatefulWidget {
 }
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
+  final AuthService _authService = AuthService();
   int _selectedIndex = 0;
 
-  static final List<Widget> _screens = <Widget>[
-    const HomeScreen(),
-    const BudgetScreen(),
-    const AnalyticsScreen(),
-    const AccountsScreen(),
-    const SettingsScreen(),
+  // List of pages to show for each tab
+  final List<Widget> _pages = const [
+    HomeScreen(),
+    BudgetScreen(),
+    AnalyticsScreen(),
+    AccountsScreen(),
+    SettingsScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -30,66 +32,64 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     });
   }
 
-  void _openAddTransaction(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in first')),
-      );
-      return;
-    }
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => const AddTransactionSheet(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final screens = <Widget>[
-      HomeScreen(
-        onAddTransaction: () => _openAddTransaction(context),
-        firestoreService: _firestoreService,
-      ),
-      const BudgetScreen(),
-      const AnalyticsScreen(),
-      const AccountsScreen(),
-      const SettingsScreen(),
-    ];
+    const Color primaryColor = Color(0xFF0D1B2A); // Navy blue
+    const Color backgroundColor = Color(0xFFF5F6FA); // Light background
+    const Color inactiveColor = Colors.grey;
 
     return Scaffold(
-      body: screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Budget'),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics), label: 'Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_box), label: 'Accounts'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        title: const Text(
+          'SmartSpend',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await _authService.logout();
+              if (!context.mounted) return;
+              Navigator.pushReplacementNamed(context, '/');
+            },
+          ),
         ],
       ),
-    );
-  }
-}
-
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: const Center(child: Text('Settings Screen')),
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        backgroundColor: Colors.white,
+        selectedItemColor: primaryColor,
+        unselectedItemColor: inactiveColor,
+        elevation: 8,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            label: 'Budget',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart_outlined),
+            label: 'Analytics',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_circle_outlined),
+            label: 'Accounts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Settings',
+          ),
+        ],
+      ),
     );
   }
 }
