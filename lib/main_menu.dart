@@ -5,6 +5,7 @@ import 'analytics.dart';
 import 'accounts.dart';
 import 'settings.dart';
 import 'services/auth_service.dart';
+import 'add_transaction.dart'; // opens add transaction screen/modal
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
@@ -17,7 +18,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   final AuthService _authService = AuthService();
   int _selectedIndex = 0;
 
-  // List of pages to show for each tab
+  // pages for bottom nav
   final List<Widget> _pages = const [
     HomeScreen(),
     BudgetScreen(),
@@ -27,15 +28,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFF0D1B2A); // Navy blue
-    const Color backgroundColor = Color(0xFFF5F6FA); // Light background
+    const Color primaryColor = Color(0xFF0D1B2A); // navy
+    const Color backgroundColor = Color(0xFFF5F6FA);
     const Color inactiveColor = Colors.grey;
 
     return Scaffold(
@@ -46,6 +45,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: primaryColor,
+        centerTitle: true,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -58,7 +58,22 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ),
         ],
       ),
+
+      // Floating + opens add transaction as full-screen modal
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: primaryColor,
+        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () {
+          // open full-screen add transaction page (modal route)
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
+          );
+        },
+      ),
+
       body: _pages[_selectedIndex],
+
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,

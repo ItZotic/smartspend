@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Welcome Back",
+                      "Welcome!",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 32,

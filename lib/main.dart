@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+
+// Make sure these filenames are ALL lowercase
 import 'login.dart';
 import 'register.dart';
 import 'main_menu.dart';
@@ -28,9 +30,11 @@ class MyApp extends StatelessWidget {
       title: 'SmartSpend',
       initialRoute: '/',
       routes: {
-        '/': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/main_menu': (context) => const MainMenuScreen(),
+        '/': (context) => const LoginScreen(), // ✅ class LoginScreen
+        '/register': (context) =>
+            const RegisterScreen(), // ✅ class RegisterScreen
+        '/main_menu': (context) =>
+            const MainMenuScreen(), // ✅ class MainMenuScreen
       },
     );
   }
