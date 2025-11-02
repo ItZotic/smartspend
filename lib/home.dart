@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final ScrollController? scrollController;
+
+  const HomeScreen({super.key, this.scrollController});
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +47,19 @@ class HomeScreen extends StatelessWidget {
           }
 
           final remainingBalance = totalIncome - totalExpense;
+
+          final todaysRecords = docs.where((d) {
+            final data = d.data()! as Map<String, dynamic>;
+            final ts = data['createdAt'];
+            if (ts is Timestamp) {
+              final date = ts.toDate();
+              final now = DateTime.now();
+              return date.year == now.year &&
+                  date.month == now.month &&
+                  date.day == now.day;
+            }
+            return false;
+          }).toList();
 
           return Column(
             children: [
@@ -114,71 +129,264 @@ class HomeScreen extends StatelessWidget {
 
               // Recent + Daily
               Expanded(
-                child: docs.isEmpty
-                    ? const Center(child: Text('No transactions yet.'))
-                    : ListView(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12.0, bottom: 8),
+                      child: Center(
+                        child: Text(
+                          'Recent Transactions',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
                         ),
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 12.0, bottom: 8),
-                            child: Center(
-                              child: Text(
-                                'Recent Transactions',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
+                      ),
+                    ),
+                    if (docs.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: Text('No transactions yet.')),
+                      ),
+                    ...docs.map((d) {
+                      final data = d.data()! as Map<String, dynamic>;
+                      final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+                      final isExpense = amount < 0;
+                      final ts = data['createdAt'];
+                      final time =
+                          ts is Timestamp ? ts.toDate() : DateTime.now();
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.grey[100],
+                            child: Icon(
+                              isExpense
+                                  ? Icons.shopping_bag_outlined
+                                  : Icons.attach_money,
+                              color:
+                                  isExpense ? Colors.redAccent : Colors.green,
                             ),
                           ),
-
-                          // recent items
-                          ...docs.map((d) {
+                          title: Text(
+                            data['name'] ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${data['category'] ?? ''} • ${TimeOfDay.fromDateTime(time).format(context)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    color: isExpense
+                                        ? Colors.redAccent
+                                        : Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      size: 18,
+                                      color: Colors.green,
+                                    ),
+                                    onPressed: () {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        builder: (_) => EditTransactionSheet(
+                                          docId: d.id,
+                                          data: data,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      size: 18,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text(
+                                            'Delete Transaction?',
+                                          ),
+                                          content: const Text(
+                                            'This action cannot be undone.',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(
+                                                ctx,
+                                                false,
+                                              ),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(
+                                                ctx,
+                                                true,
+                                              ),
+                                              child: const Text(
+                                                'Delete',
+                                                style: TextStyle(
+                                                  color: Colors.redAccent,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        await FirebaseFirestore.instance
+                                            .collection('transactions')
+                                            .doc(d.id)
+                                            .delete();
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 20),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Daily Records',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: Color(0xFF1A1A2E),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          if (todaysRecords.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(12.0),
+                              child: Text(
+                                'No records for today.',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                          ...todaysRecords.map((d) {
                             final data = d.data()! as Map<String, dynamic>;
                             final amount =
                                 (data['amount'] as num?)?.toDouble() ?? 0;
                             final isExpense = amount < 0;
-                            final ts = data['createdAt'];
-                            final time = ts is Timestamp
-                                ? ts.toDate()
-                                : DateTime.now();
-
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
+                              margin: const EdgeInsets.symmetric(
+                                vertical: 6,
                               ),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.grey[100],
-                                  child: Icon(
-                                    isExpense
-                                        ? Icons.shopping_bag_outlined
-                                        : Icons.attach_money,
-                                    color: isExpense
-                                        ? Colors.redAccent
-                                        : Colors.green,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        isExpense
+                                            ? Icons.remove_circle_outline
+                                            : Icons.add_circle_outline,
+                                        color: isExpense
+                                            ? Colors.redAccent
+                                            : Colors.green,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              data['name'] ?? '',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              data['category'] ?? '',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                title: Text(data['name'] ?? ''),
-                                subtitle: Text(
-                                  '${data['category'] ?? ''} • ${TimeOfDay.fromDateTime(time).format(context)}',
-                                ),
-                                trailing: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
                                       '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
                                       style: TextStyle(
                                         color: isExpense
@@ -187,235 +395,16 @@ class HomeScreen extends StatelessWidget {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Edit (shows edit bottom sheet)
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            size: 18,
-                                            color: Colors.green,
-                                          ),
-                                          onPressed: () {
-                                            showModalBottomSheet(
-                                              context: context,
-                                              isScrollControlled: true,
-                                              builder: (_) =>
-                                                  EditTransactionSheet(
-                                                    docId: d.id,
-                                                    data: data,
-                                                  ),
-                                            );
-                                          },
-                                        ),
-                                        // Delete
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            size: 18,
-                                            color: Colors.redAccent,
-                                          ),
-                                          onPressed: () async {
-                                            final confirm = await showDialog<bool>(
-                                              context: context,
-                                              builder: (ctx) => AlertDialog(
-                                                title: const Text(
-                                                  'Delete Transaction?',
-                                                ),
-                                                content: const Text(
-                                                  'This action cannot be undone.',
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                          ctx,
-                                                          false,
-                                                        ),
-                                                    child: const Text('Cancel'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                          ctx,
-                                                          true,
-                                                        ),
-                                                    child: const Text(
-                                                      'Delete',
-                                                      style: TextStyle(
-                                                        color: Colors.redAccent,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                            if (confirm == true) {
-                                              await FirebaseFirestore.instance
-                                                  .collection('transactions')
-                                                  .doc(d.id)
-                                                  .delete();
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             );
-                          }).toList(),
-
-                          const SizedBox(height: 20),
-
-                          // Daily Records card
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                const Text(
-                                  'Daily Records',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
-                                    color: Color(0xFF1A1A2E),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-
-                                ...docs
-                                    .where((d) {
-                                      final data =
-                                          d.data()! as Map<String, dynamic>;
-                                      final ts = data['createdAt'];
-                                      if (ts is Timestamp) {
-                                        final date = ts.toDate();
-                                        final now = DateTime.now();
-                                        return date.year == now.year &&
-                                            date.month == now.month &&
-                                            date.day == now.day;
-                                      }
-                                      return false;
-                                    })
-                                    .map((d) {
-                                      final data =
-                                          d.data()! as Map<String, dynamic>;
-                                      final amount =
-                                          (data['amount'] as num?)
-                                              ?.toDouble() ??
-                                          0;
-                                      final isExpense = amount < 0;
-                                      return Container(
-                                        margin: const EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[50],
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  isExpense
-                                                      ? Icons
-                                                            .remove_circle_outline
-                                                      : Icons
-                                                            .add_circle_outline,
-                                                  color: isExpense
-                                                      ? Colors.redAccent
-                                                      : Colors.green,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 10),
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      data['name'] ?? '',
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      data['category'] ?? '',
-                                                      style: const TextStyle(
-                                                        color: Colors.grey,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                            Text(
-                                              '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
-                                              style: TextStyle(
-                                                color: isExpense
-                                                    ? Colors.redAccent
-                                                    : Colors.green,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    })
-                                    .toList(),
-
-                                if (docs.where((d) {
-                                  final data =
-                                      d.data()! as Map<String, dynamic>;
-                                  final ts = data['createdAt'];
-                                  if (ts is Timestamp) {
-                                    final date = ts.toDate();
-                                    final now = DateTime.now();
-                                    return date.year == now.year &&
-                                        date.month == now.month &&
-                                        date.day == now.day;
-                                  }
-                                  return false;
-                                }).isEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.all(12.0),
-                                    child: Text(
-                                      'No records for today.',
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
+                          }),
                         ],
                       ),
+                    ),
+                  ],
+                ),
               ),
             ],
           );
@@ -503,6 +492,9 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                     'category': categoryCtrl.text,
                     'amount': amount,
                   });
+              if (!mounted) {
+                return;
+              }
               Navigator.pop(context);
             },
             child: const Text(

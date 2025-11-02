@@ -23,21 +23,29 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   // helper to format display amount (red if expense)
   String get _displayAmount {
-    if (_amountText.isEmpty) return '₱0';
-    return '₱' + _amountText;
+    if (_amountText.isEmpty) {
+      return '₱0';
+    }
+    return '₱$_amountText';
   }
 
   void _appendDigit(String v) {
     setState(() {
       // limit length to prevent crazy long numbers
-      if (_amountText.length >= 12) return;
-      if (v == '.' && _amountText.contains('.')) return;
+      if (_amountText.length >= 12) {
+        return;
+      }
+      if (v == '.' && _amountText.contains('.')) {
+        return;
+      }
       _amountText += v;
     });
   }
 
   void _backspace() {
-    if (_amountText.isEmpty) return;
+    if (_amountText.isEmpty) {
+      return;
+    }
     setState(() {
       _amountText = _amountText.substring(0, _amountText.length - 1);
     });
@@ -87,7 +95,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       Navigator.pop(context); // close page after save
       ScaffoldMessenger.of(
         context,
@@ -97,7 +107,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('Error adding transaction: $e')));
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -119,7 +131,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -190,7 +202,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: _type == 'Expense'
-                              ? Colors.redAccent.withOpacity(0.9)
+                              ? Colors.redAccent.withValues(alpha: 0.9)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -215,7 +227,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: _type == 'Income'
-                              ? Colors.greenAccent.withOpacity(0.9)
+                              ? Colors.greenAccent.withValues(alpha: 0.9)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -278,7 +290,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _category,
+                initialValue: _category,
                 items: const [
                   DropdownMenuItem(
                     value: 'Food & Dining',
@@ -314,7 +326,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _account,
+                initialValue: _account,
                 items: const [
                   DropdownMenuItem(value: 'Cash', child: Text('Cash')),
                   DropdownMenuItem(value: 'Savings', child: Text('Savings')),
