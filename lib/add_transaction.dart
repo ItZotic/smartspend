@@ -137,7 +137,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color navy = Color(0xFF1A1A2E);
+    const Color navy = Color.fromARGB(255, 109, 109, 124);
     const Color accentGreen = Color(0xFF00C853);
 
     return Scaffold(
@@ -148,7 +148,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         title: const Text(
           'Add Transaction',
           // ← change this color to whatever you like
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
