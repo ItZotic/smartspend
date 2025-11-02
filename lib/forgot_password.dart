@@ -27,19 +27,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       _showSnackBar('Password reset link sent to $email', color: Colors.green);
       await Future.delayed(const Duration(seconds: 2));
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     } on FirebaseAuthException catch (e) {
       String message = 'Failed to send reset email';
-      if (e.code == 'user-not-found') message = 'No user found with this email';
+      if (e.code == 'user-not-found') {
+        message = 'No user found with this email';
+      }
       _showSnackBar(message);
     } catch (_) {
       _showSnackBar('An error occurred. Please try again');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

@@ -10,8 +10,9 @@ class DailyRecordsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null)
+    if (user == null) {
       return const Scaffold(body: Center(child: Text('Please log in')));
+    }
 
     final stream = FirebaseFirestore.instance
         .collection('transactions')
@@ -32,10 +33,12 @@ class DailyRecordsScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: stream,
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting)
+          if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          if (!snap.hasData || snap.data!.docs.isEmpty)
+          }
+          if (!snap.hasData || snap.data!.docs.isEmpty) {
             return const Center(child: Text('No records found.'));
+          }
 
           final docs = snap.data!.docs;
 
@@ -45,7 +48,9 @@ class DailyRecordsScreen extends StatelessWidget {
             final data = d.data()! as Map<String, dynamic>;
             final ts = data['createdAt'];
             DateTime dt = DateTime.now();
-            if (ts is Timestamp) dt = ts.toDate();
+            if (ts is Timestamp) {
+              dt = ts.toDate();
+            }
             final key = DateFormat.yMMMMd().format(dt);
             groups.putIfAbsent(key, () => []).add(d);
           }
@@ -111,11 +116,12 @@ class DailyRecordsScreen extends StatelessWidget {
                         ),
                         direction: DismissDirection.endToStart,
                         onDismissed: (_) async {
+                          final messenger = ScaffoldMessenger.of(context);
                           await FirebaseFirestore.instance
                               .collection('transactions')
                               .doc(doc.id)
                               .delete();
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             const SnackBar(
                               content: Text('Transaction deleted'),
                             ),

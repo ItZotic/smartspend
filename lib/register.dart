@@ -40,13 +40,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
     try {
       await _authService.register(email, password);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _showSnackBar('Registration successful!', color: Colors.green);
       Navigator.pushReplacementNamed(context, '/');
     } catch (e) {
       _showSnackBar('Registration failed: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -112,7 +116,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),

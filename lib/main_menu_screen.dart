@@ -16,7 +16,9 @@ class MainMenuScreen extends StatelessWidget {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await authService.logout();
-              if (!context.mounted) return;
+              if (!context.mounted) {
+                return;
+              }
               Navigator.pushReplacementNamed(context, '/');
             },
           ),
