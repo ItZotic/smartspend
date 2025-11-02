@@ -129,22 +129,13 @@ class HomeScreen extends StatelessWidget {
 
               // Recent + Daily
               Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 12.0, bottom: 8),
-                      child: Center(
-                        child: Text(
-                          'Recent Transactions',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
+                child: docs.isEmpty
+                    ? const Center(child: Text('No transactions yet.'))
+                    : ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
                       ),
                     ),
@@ -210,108 +201,124 @@ class HomeScreen extends StatelessWidget {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.edit,
-                                      size: 18,
-                                      color: Colors.green,
-                                    ),
-                                    onPressed: () {
-                                      showModalBottomSheet(
-                                        context: context,
-                                        isScrollControlled: true,
-                                        builder: (_) => EditTransactionSheet(
-                                          docId: d.id,
-                                          data: data,
+                                title: Text(
+                                  data['name'] ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  '${data['category'] ?? ''} • ${TimeOfDay.fromDateTime(time).format(context)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          color: isExpense
+                                              ? Colors.redAccent
+                                              : Colors.green,
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                      );
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      size: 18,
-                                      color: Colors.redAccent,
+                                      ),
                                     ),
-                                    onPressed: () async {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: const Text(
-                                            'Delete Transaction?',
-                                          ),
-                                          content: const Text(
-                                            'This action cannot be undone.',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(
-                                                ctx,
-                                                false,
-                                              ),
-                                              child: const Text('Cancel'),
+                                    const SizedBox(height: 4),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Edit (shows edit bottom sheet)
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.edit,
+                                              size: 18,
+                                              color: Colors.green,
                                             ),
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(
-                                                ctx,
-                                                true,
-                                              ),
-                                              child: const Text(
-                                                'Delete',
-                                                style: TextStyle(
-                                                  color: Colors.redAccent,
+                                            onPressed: () {
+                                              showModalBottomSheet(
+                                                context: context,
+                                                isScrollControlled: true,
+                                                builder: (_) =>
+                                                    EditTransactionSheet(
+                                                      docId: d.id,
+                                                      data: data,
+                                                    ),
+                                              );
+                                            },
+                                          ),
+                                          // Delete
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              size: 18,
+                                              color: Colors.redAccent,
+                                            ),
+                                            onPressed: () async {
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (ctx) => AlertDialog(
+                                                  title: const Text(
+                                                    'Delete Transaction?',
+                                                  ),
+                                                  content: const Text(
+                                                    'This action cannot be undone.',
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            ctx,
+                                                            false,
+                                                          ),
+                                                      child: const Text('Cancel'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            ctx,
+                                                            true,
+                                                          ),
+                                                      child: const Text(
+                                                        'Delete',
+                                                        style: TextStyle(
+                                                          color: Colors.redAccent,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                      if (confirm == true) {
-                                        await FirebaseFirestore.instance
-                                            .collection('transactions')
-                                            .doc(d.id)
-                                            .delete();
-                                      }
-                                    },
-                                  ),
-                                ],
+                                              );
+                                              if (confirm == true) {
+                                                await FirebaseFirestore.instance
+                                                    .collection('transactions')
+                                                    .doc(d.id)
+                                                    .delete();
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 20),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Daily Records',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                              color: Color(0xFF1A1A2E),
+                            );
+                          }),
+
+                          const SizedBox(height: 20),
+
+                          // Daily Records card
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -362,12 +369,67 @@ class HomeScreen extends StatelessWidget {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              data['name'] ?? '',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  isExpense
+                                                      ? Icons
+                                                            .remove_circle_outline
+                                                      : Icons
+                                                            .add_circle_outline,
+                                                  color: isExpense
+                                                      ? Colors.redAccent
+                                                      : Colors.green,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        data['name'] ?? '',
+                                                        maxLines: 1,
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                        style:
+                                                            const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        data['category'] ?? '',
+                                                        maxLines: 1,
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                        style:
+                                                            const TextStyle(
+                                                          color: Colors.grey,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
+                                                style: TextStyle(
+                                                  color: isExpense
+                                                      ? Colors.redAccent
+                                                      : Colors.green,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ),
                                             Text(
@@ -381,11 +443,24 @@ class HomeScreen extends StatelessWidget {
                                             ),
                                           ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
+                                      );
+                                    }),
+
+                                if (docs.where((d) {
+                                  final data =
+                                      d.data()! as Map<String, dynamic>;
+                                  final ts = data['createdAt'];
+                                  if (ts is Timestamp) {
+                                    final date = ts.toDate();
+                                    final now = DateTime.now();
+                                    return date.year == now.year &&
+                                        date.month == now.month &&
+                                        date.day == now.day;
+                                  }
+                                  return false;
+                                }).isEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.all(12.0),
                                     child: Text(
                                       '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
                                       style: TextStyle(
