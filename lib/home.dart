@@ -48,6 +48,19 @@ class HomeScreen extends StatelessWidget {
 
           final remainingBalance = totalIncome - totalExpense;
 
+          final todaysRecords = docs.where((d) {
+            final data = d.data()! as Map<String, dynamic>;
+            final ts = data['createdAt'];
+            if (ts is Timestamp) {
+              final date = ts.toDate();
+              final now = DateTime.now();
+              return date.year == now.year &&
+                  date.month == now.month &&
+                  date.day == now.day;
+            }
+            return false;
+          }).toList();
+
           return Column(
             children: [
               // header
@@ -124,54 +137,68 @@ class HomeScreen extends StatelessWidget {
                           horizontal: 16,
                           vertical: 8,
                         ),
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 12.0, bottom: 8),
-                            child: Center(
-                              child: Text(
-                                'Recent Transactions',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
+                      ),
+                    ),
+                    if (docs.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: Text('No transactions yet.')),
+                      ),
+                    ...docs.map((d) {
+                      final data = d.data()! as Map<String, dynamic>;
+                      final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+                      final isExpense = amount < 0;
+                      final ts = data['createdAt'];
+                      final time =
+                          ts is Timestamp ? ts.toDate() : DateTime.now();
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.grey[100],
+                            child: Icon(
+                              isExpense
+                                  ? Icons.shopping_bag_outlined
+                                  : Icons.attach_money,
+                              color:
+                                  isExpense ? Colors.redAccent : Colors.green,
                             ),
                           ),
-
-                          // recent items
-                          ...docs.map((d) {
-                            final data = d.data()! as Map<String, dynamic>;
-                            final amount =
-                                (data['amount'] as num?)?.toDouble() ?? 0;
-                            final isExpense = amount < 0;
-                            final ts = data['createdAt'];
-                            final time = ts is Timestamp
-                                ? ts.toDate()
-                                : DateTime.now();
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.grey[100],
-                                  child: Icon(
-                                    isExpense
-                                        ? Icons.shopping_bag_outlined
-                                        : Icons.attach_money,
+                          title: Text(
+                            data['name'] ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${data['category'] ?? ''} • ${TimeOfDay.fromDateTime(time).format(context)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
+                                  style: TextStyle(
                                     color: isExpense
                                         ? Colors.redAccent
                                         : Colors.green,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 title: Text(
@@ -293,68 +320,54 @@ class HomeScreen extends StatelessWidget {
                               horizontal: 16,
                               vertical: 16,
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
+                          ),
+                          const SizedBox(height: 10),
+                          if (todaysRecords.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(12.0),
+                              child: Text(
+                                'No records for today.',
+                                style: TextStyle(color: Colors.grey),
+                              ),
                             ),
-                            child: Column(
-                              children: [
-                                const Text(
-                                  'Daily Records',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
-                                    color: Color(0xFF1A1A2E),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-
-                                ...docs
-                                    .where((d) {
-                                      final data =
-                                          d.data()! as Map<String, dynamic>;
-                                      final ts = data['createdAt'];
-                                      if (ts is Timestamp) {
-                                        final date = ts.toDate();
-                                        final now = DateTime.now();
-                                        return date.year == now.year &&
-                                            date.month == now.month &&
-                                            date.day == now.day;
-                                      }
-                                      return false;
-                                    })
-                                    .map((d) {
-                                      final data =
-                                          d.data()! as Map<String, dynamic>;
-                                      final amount =
-                                          (data['amount'] as num?)
-                                              ?.toDouble() ??
-                                          0;
-                                      final isExpense = amount < 0;
-                                      return Container(
-                                        margin: const EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[50],
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
+                          ...todaysRecords.map((d) {
+                            final data = d.data()! as Map<String, dynamic>;
+                            final amount =
+                                (data['amount'] as num?)?.toDouble() ?? 0;
+                            final isExpense = amount < 0;
+                            return Container(
+                              margin: const EdgeInsets.symmetric(
+                                vertical: 6,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        isExpense
+                                            ? Icons.remove_circle_outline
+                                            : Icons.add_circle_outline,
+                                        color: isExpense
+                                            ? Colors.redAccent
+                                            : Colors.green,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Row(
                                               children: [
@@ -419,6 +432,15 @@ class HomeScreen extends StatelessWidget {
                                                 ),
                                               ),
                                             ),
+                                            Text(
+                                              data['category'] ?? '',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       );
@@ -440,15 +462,24 @@ class HomeScreen extends StatelessWidget {
                                   const Padding(
                                     padding: EdgeInsets.all(12.0),
                                     child: Text(
-                                      'No records for today.',
-                                      style: TextStyle(color: Colors.grey),
+                                      '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        color: isExpense
+                                            ? Colors.redAccent
+                                            : Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
-                              ],
-                            ),
-                          ),
+                                ],
+                              ),
+                            );
+                          }),
                         ],
                       ),
+                    ),
+                  ],
+                ),
               ),
             ],
           );
