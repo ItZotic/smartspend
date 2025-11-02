@@ -139,12 +139,6 @@ class HomeScreen extends StatelessWidget {
                           vertical: 8,
                         ),
                         children: [
-                          // Recent transactions
-                          if (docs.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 24),
-                              child: Center(child: Text('No transactions yet.')),
-                            ),
                           ...docs.map((d) {
                             final data = d.data()! as Map<String, dynamic>;
                             final amount =
@@ -155,7 +149,11 @@ class HomeScreen extends StatelessWidget {
                                 ts is Timestamp ? ts.toDate() : DateTime.now();
 
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
@@ -167,39 +165,128 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              child: ListTile(
-                                isThreeLine: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.grey[100],
-                                  child: Icon(
-                                    isExpense
-                                        ? Icons.shopping_bag_outlined
-                                        : Icons.attach_money,
-                                    color: isExpense
-                                        ? Colors.redAccent
-                                        : Colors.green,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // Leading icon
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: Colors.grey[100],
+                                    child: Icon(
+                                      isExpense
+                                          ? Icons.shopping_bag_outlined
+                                          : Icons.attach_money,
+                                      color: isExpense
+                                          ? Colors.redAccent
+                                          : Colors.green,
+                                    ),
                                   ),
-                                ),
-                                title: Text(
-                                  data['name'] ?? '',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  '${data['category'] ?? ''} • ${TimeOfDay.fromDateTime(time).format(context)}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    FittedBox(
+                                  const SizedBox(width: 12),
+
+                                  // Title + subtitle
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          data['name'] ?? '',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${data['category'] ?? ''} • ${TimeOfDay.fromDateTime(time).format(context)}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.black54,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 8),
+
+                                  // MIDDLE: edit/delete (center aligned vertically)
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      _miniIconButton(
+                                        icon: Icons.edit,
+                                        color: Colors.green,
+                                        onPressed: () {
+                                          showModalBottomSheet(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            builder: (_) => EditTransactionSheet(
+                                              docId: d.id,
+                                              data: data,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(height: 6),
+                                      _miniIconButton(
+                                        icon: Icons.delete,
+                                        color: Colors.redAccent,
+                                        onPressed: () async {
+                                          final confirm =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text(
+                                                'Delete Transaction?',
+                                              ),
+                                              content: const Text(
+                                                'This action cannot be undone.',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          ctx, false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          ctx, true),
+                                                  child: const Text(
+                                                    'Delete',
+                                                    style: TextStyle(
+                                                        color:
+                                                            Colors.redAccent),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            await FirebaseFirestore.instance
+                                                .collection('transactions')
+                                                .doc(d.id)
+                                                .delete();
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(width: 8),
+
+                                  // RIGHT: amount (hard width + FittedBox => never overflows)
+                                  SizedBox(
+                                    width: 96, // clamp width to keep layout stable
+                                    child: FittedBox(
                                       fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
                                       child: Text(
                                         '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
                                         style: TextStyle(
@@ -210,89 +297,8 @@ class HomeScreen extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // Edit (shows edit bottom sheet)
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.edit,
-                                              size: 18,
-                                              color: Colors.green,
-                                            ),
-                                            onPressed: () {
-                                              showModalBottomSheet(
-                                                context: context,
-                                                isScrollControlled: true,
-                                                builder: (_) =>
-                                                    EditTransactionSheet(
-                                                      docId: d.id,
-                                                      data: data,
-                                                    ),
-                                              );
-                                            },
-                                          ),
-                                          // Delete
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete,
-                                              size: 18,
-                                              color: Colors.redAccent,
-                                            ),
-                                            onPressed: () async {
-                                              final confirm =
-                                                  await showDialog<bool>(
-                                                context: context,
-                                                builder: (ctx) => AlertDialog(
-                                                  title: const Text(
-                                                    'Delete Transaction?',
-                                                  ),
-                                                  content: const Text(
-                                                    'This action cannot be undone.',
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            ctx,
-                                                            false,
-                                                          ),
-                                                      child:
-                                                          const Text('Cancel'),
-                                                    ),
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            ctx,
-                                                            true,
-                                                          ),
-                                                      child: const Text(
-                                                        'Delete',
-                                                        style: TextStyle(
-                                                          color:
-                                                              Colors.redAccent,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                              if (confirm == true) {
-                                                await FirebaseFirestore.instance
-                                                    .collection('transactions')
-                                                    .doc(d.id)
-                                                    .delete();
-                                              }
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             );
                           }),
@@ -425,6 +431,25 @@ class HomeScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  // Tiny icon button used in the middle column
+  Widget _miniIconButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18, color: color),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(
+        minWidth: 32,
+        minHeight: 32,
+      ),
+      splashRadius: 18,
     );
   }
 }
