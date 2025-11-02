@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final ScrollController? scrollController;
+
+  const HomeScreen({super.key, this.scrollController});
 
   @override
   Widget build(BuildContext context) {
@@ -117,6 +119,7 @@ class HomeScreen extends StatelessWidget {
                 child: docs.isEmpty
                     ? const Center(child: Text('No transactions yet.'))
                     : ListView(
+                        controller: scrollController,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
@@ -171,102 +174,115 @@ class HomeScreen extends StatelessWidget {
                                         : Colors.green,
                                   ),
                                 ),
-                                title: Text(data['name'] ?? ''),
+                                title: Text(
+                                  data['name'] ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                                 subtitle: Text(
                                   '${data['category'] ?? ''} • ${TimeOfDay.fromDateTime(time).format(context)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 trailing: Column(
+                                  mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text(
-                                      '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        color: isExpense
-                                            ? Colors.redAccent
-                                            : Colors.green,
-                                        fontWeight: FontWeight.bold,
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          color: isExpense
+                                              ? Colors.redAccent
+                                              : Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Edit (shows edit bottom sheet)
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            size: 18,
-                                            color: Colors.green,
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Edit (shows edit bottom sheet)
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.edit,
+                                              size: 18,
+                                              color: Colors.green,
+                                            ),
+                                            onPressed: () {
+                                              showModalBottomSheet(
+                                                context: context,
+                                                isScrollControlled: true,
+                                                builder: (_) =>
+                                                    EditTransactionSheet(
+                                                      docId: d.id,
+                                                      data: data,
+                                                    ),
+                                              );
+                                            },
                                           ),
-                                          onPressed: () {
-                                            showModalBottomSheet(
-                                              context: context,
-                                              isScrollControlled: true,
-                                              builder: (_) =>
-                                                  EditTransactionSheet(
-                                                    docId: d.id,
-                                                    data: data,
+                                          // Delete
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              size: 18,
+                                              color: Colors.redAccent,
+                                            ),
+                                            onPressed: () async {
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (ctx) => AlertDialog(
+                                                  title: const Text(
+                                                    'Delete Transaction?',
                                                   ),
-                                            );
-                                          },
-                                        ),
-                                        // Delete
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            size: 18,
-                                            color: Colors.redAccent,
-                                          ),
-                                          onPressed: () async {
-                                            final confirm = await showDialog<bool>(
-                                              context: context,
-                                              builder: (ctx) => AlertDialog(
-                                                title: const Text(
-                                                  'Delete Transaction?',
-                                                ),
-                                                content: const Text(
-                                                  'This action cannot be undone.',
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                          ctx,
-                                                          false,
-                                                        ),
-                                                    child: const Text('Cancel'),
+                                                  content: const Text(
+                                                    'This action cannot be undone.',
                                                   ),
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                          ctx,
-                                                          true,
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            ctx,
+                                                            false,
+                                                          ),
+                                                      child: const Text('Cancel'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            ctx,
+                                                            true,
+                                                          ),
+                                                      child: const Text(
+                                                        'Delete',
+                                                        style: TextStyle(
+                                                          color: Colors.redAccent,
                                                         ),
-                                                    child: const Text(
-                                                      'Delete',
-                                                      style: TextStyle(
-                                                        color: Colors.redAccent,
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                            if (confirm == true) {
-                                              await FirebaseFirestore.instance
-                                                  .collection('transactions')
-                                                  .doc(d.id)
-                                                  .delete();
-                                            }
-                                          },
-                                        ),
-                                      ],
+                                                  ],
+                                                ),
+                                              );
+                                              if (confirm == true) {
+                                                await FirebaseFirestore.instance
+                                                    .collection('transactions')
+                                                    .doc(d.id)
+                                                    .delete();
+                                              }
+                                            },
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                             );
-                          }).toList(),
+                          }),
 
                           const SizedBox(height: 20),
 
@@ -354,42 +370,59 @@ class HomeScreen extends StatelessWidget {
                                                   size: 20,
                                                 ),
                                                 const SizedBox(width: 10),
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      data['name'] ?? '',
-                                                      style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
+                                                Expanded(
+                                                  child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        data['name'] ?? '',
+                                                        maxLines: 1,
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                        style:
+                                                            const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
                                                       ),
-                                                    ),
-                                                    Text(
-                                                      data['category'] ?? '',
-                                                      style: const TextStyle(
-                                                        color: Colors.grey,
-                                                        fontSize: 12,
+                                                      Text(
+                                                        data['category'] ?? '',
+                                                        maxLines: 1,
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                        style:
+                                                            const TextStyle(
+                                                          color: Colors.grey,
+                                                          fontSize: 12,
+                                                        ),
                                                       ),
-                                                    ),
-                                                  ],
+                                                    ],
+                                                  ),
                                                 ),
                                               ],
                                             ),
-                                            Text(
-                                              '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
-                                              style: TextStyle(
-                                                color: isExpense
-                                                    ? Colors.redAccent
-                                                    : Colors.green,
-                                                fontWeight: FontWeight.bold,
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
+                                                style: TextStyle(
+                                                  color: isExpense
+                                                      ? Colors.redAccent
+                                                      : Colors.green,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
                                       );
-                                    })
-                                    .toList(),
+                                    }),
 
                                 if (docs.where((d) {
                                   final data =
@@ -503,6 +536,9 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                     'category': categoryCtrl.text,
                     'amount': amount,
                   });
+              if (!mounted) {
+                return;
+              }
               Navigator.pop(context);
             },
             child: const Text(
