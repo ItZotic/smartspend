@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'login.dart';
 import 'register.dart';
 import 'main_menu.dart';
+import 'forgot_password.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +36,8 @@ class MyApp extends StatelessWidget {
             const RegisterScreen(), // ✅ class RegisterScreen
         '/main_menu': (context) =>
             const MainMenuScreen(), // ✅ class MainMenuScreen
+         '/forgot_password': (context) => 
+            const ForgotPasswordScreen(),        
       },
     );
   }
