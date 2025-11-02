@@ -14,7 +14,9 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
 
     Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return; // ✅ Prevent using context if unmounted
+      if (!mounted) {
+        return;
+      } // ✅ Prevent using context if unmounted
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const WelcomeScreen()),

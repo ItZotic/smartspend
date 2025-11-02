@@ -91,12 +91,16 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
         type: _type,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _selectedCategoryId = categoryId;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save category: $e')),
       );
@@ -108,7 +112,9 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   Future<void> _save() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You must be signed in')),
       );
@@ -146,13 +152,17 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
         date: _selectedDate,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Transaction added')),
       );
       Navigator.of(context).pop();
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add transaction: $e')),
       );
@@ -217,7 +227,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                     builder: (context, snapshot) {
                       final categories = snapshot.data?.docs ?? [];
                       return DropdownButtonFormField<String>(
-                        value: _selectedCategoryId,
+                        initialValue: _selectedCategoryId,
                         items: categories
                             .map(
                               (doc) => DropdownMenuItem<String>(

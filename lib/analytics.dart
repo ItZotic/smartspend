@@ -10,8 +10,9 @@ class AnalyticsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null)
+    if (user == null) {
       return const Scaffold(body: Center(child: Text('Please log in')));
+    }
 
     final stream = FirebaseFirestore.instance
         .collection('transactions')
@@ -31,8 +32,9 @@ class AnalyticsScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: stream,
         builder: (context, snap) {
-          if (!snap.hasData)
+          if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           final docs = snap.data!.docs;
           double income = 0;
@@ -48,14 +50,17 @@ class AnalyticsScreen extends StatelessWidget {
             final amount = (data['amount'] as num?)?.toDouble() ?? 0;
             final category = data['category'] ?? 'Other';
             categoryTotals[category] = (categoryTotals[category] ?? 0) + amount;
-            if (amount > 0)
+            if (amount > 0) {
               income += amount;
-            else
+            } else {
               expenses += amount.abs();
+            }
 
             final ts = data['createdAt'];
             DateTime dt = now;
-            if (ts is Timestamp) dt = ts.toDate();
+            if (ts is Timestamp) {
+              dt = ts.toDate();
+            }
             final key = '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
             monthTotals[key] = (monthTotals[key] ?? 0) + amount;
           }
@@ -189,8 +194,9 @@ class AnalyticsScreen extends StatelessWidget {
                                 showTitles: true,
                                 getTitlesWidget: (v, meta) {
                                   final idx = v.toInt();
-                                  if (idx < 0 || idx >= last6.length)
+                                  if (idx < 0 || idx >= last6.length) {
                                     return const SizedBox();
+                                  }
                                   final key = last6[idx];
                                   final parts = key.split('-');
                                   final m = int.parse(parts[1]);
