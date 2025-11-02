@@ -119,6 +119,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ),
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
       body: _pages[_selectedIndex],
 

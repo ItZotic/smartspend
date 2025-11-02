@@ -92,7 +92,7 @@ class AccountsScreen extends StatelessWidget {
       child: Container(
         height: 100,
         decoration: BoxDecoration(
-          color: color.withValues(alpha:0.9),
+          color: color.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.all(12),
