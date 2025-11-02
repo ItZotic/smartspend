@@ -169,7 +169,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         centerTitle: true,
         title: const Text(
           'Add Transaction',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white,),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
