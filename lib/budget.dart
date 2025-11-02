@@ -49,9 +49,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
           final docs = snapshot.data?.docs ?? [];
 
-          double totalIncome = 0;
-          double totalExpense = 0;
-          Map<String, double> spentByCategory = {
+          // Track total income & expenses PER CATEGORY
+          Map<String, double> incomeByCategory = {
+            for (var c in _categories) c: 0,
+          };
+          Map<String, double> expenseByCategory = {
             for (var c in _categories) c: 0,
           };
 
@@ -59,23 +61,26 @@ class _BudgetScreenState extends State<BudgetScreen> {
             final amount = (doc['amount'] as num?)?.toDouble() ?? 0;
             final category = doc['category'] ?? '';
 
-            if (amount > 0) {
-              totalIncome += amount;
-            } else if (amount < 0) {
-              totalExpense += amount.abs();
-              spentByCategory[category] =
-                  (spentByCategory[category] ?? 0) + amount.abs();
+            if (_categories.contains(category)) {
+              if (amount > 0) {
+                incomeByCategory[category] =
+                    (incomeByCategory[category] ?? 0) + amount;
+              } else if (amount < 0) {
+                expenseByCategory[category] =
+                    (expenseByCategory[category] ?? 0) + amount.abs();
+              }
             }
           }
 
-          double totalBudget = totalIncome;
-          double totalSpent = totalExpense;
-          double leftOverall = totalBudget - totalSpent;
+          // Compute overall totals (just for summary)
+          double totalIncome = incomeByCategory.values.fold(0, (a, b) => a + b);
+          double totalExpense = expenseByCategory.values.fold(0, (a, b) => a + b);
+          double totalLeft = totalIncome - totalExpense;
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _buildSummaryCard(totalBudget, totalSpent, leftOverall),
+              _buildSummaryCard(totalIncome, totalExpense, totalLeft),
               const SizedBox(height: 20),
               const Text("Categories", style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
@@ -83,8 +88,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
               for (var category in _categories)
                 _buildCategoryCard(
                   category,
-                  spentByCategory[category] ?? 0,
-                  totalBudget,
+                  incomeByCategory[category]!,
+                  expenseByCategory[category]!,
                   _getIcon(category),
                 ),
             ],
@@ -94,9 +99,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  // 🔹 Summary card
-  Widget _buildSummaryCard(double totalBudget, double totalSpent, double left) {
-    final percent = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
+  // 🔹 Summary card (overall)
+  Widget _buildSummaryCard(double totalIncome, double totalExpense, double left) {
+    final percent =
+        totalIncome > 0 ? (totalExpense / totalIncome).clamp(0.0, 1.0) : 0.0;
 
     return Container(
       decoration: BoxDecoration(
@@ -112,9 +118,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Total Budget\n₱${totalBudget.toStringAsFixed(2)}",
+              Text("Total Income\n₱${totalIncome.toStringAsFixed(2)}",
                   style: const TextStyle(fontWeight: FontWeight.w500)),
-              Text("Total Spent\n₱${totalSpent.toStringAsFixed(2)}",
+              Text("Total Spent\n₱${totalExpense.toStringAsFixed(2)}",
                   style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w500)),
             ],
           ),
@@ -137,10 +143,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  // 🔹 Per-category card
-  Widget _buildCategoryCard(String title, double spent, double totalBudget, IconData icon) {
-    final percent = totalBudget > 0 ? (spent / totalBudget).clamp(0.0, 1.0) : 0.0;
-    final left = totalBudget - spent;
+  // 🔹 Category card (individual)
+  Widget _buildCategoryCard(
+      String title, double income, double spent, IconData icon) {
+    final left = (income - spent).clamp(0, double.infinity);
+    final percent = income > 0 ? (spent / income).clamp(0.0, 1.0) : 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -166,7 +173,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
           LinearProgressIndicator(
             value: percent,
             backgroundColor: Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green)),
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+          ),
           const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerLeft,
