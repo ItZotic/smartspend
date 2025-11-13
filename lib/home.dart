@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final ScrollController? scrollController;
 
   const HomeScreen({super.key, this.scrollController});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late int _selectedMonth;
+  late int _selectedYear;
+  late DateTime _rangeStart;
+  late DateTime _rangeEnd;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedMonth = now.month;
+    _selectedYear = now.year;
+    _rangeStart = DateTime(_selectedYear, _selectedMonth);
+    _rangeEnd = DateTime(_selectedYear, _selectedMonth + 1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +54,17 @@ class HomeScreen extends StatelessWidget {
           }
 
           final docs = snapshot.data?.docs ?? [];
+          final filteredDocs = docs.where((doc) {
+            final data = doc.data()! as Map<String, dynamic>;
+            final date = _extractDate(data['createdAt']);
+            if (date == null) return false;
+            return !date.isBefore(_rangeStart) && date.isBefore(_rangeEnd);
+          }).toList();
 
           double totalIncome = 0;
           double totalExpense = 0;
 
-          for (final doc in docs) {
+          for (final doc in filteredDocs) {
             final data = doc.data()! as Map<String, dynamic>;
             final amount = (data['amount'] as num?)?.toDouble() ?? 0;
             if (amount >= 0) {
@@ -49,17 +76,14 @@ class HomeScreen extends StatelessWidget {
 
           final remainingBalance = totalIncome - totalExpense;
 
-          final todaysRecords = docs.where((d) {
+          final todaysRecords = filteredDocs.where((d) {
             final data = d.data()! as Map<String, dynamic>;
-            final ts = data['createdAt'];
-            if (ts is Timestamp) {
-              final date = ts.toDate();
-              final now = DateTime.now();
-              return date.year == now.year &&
-                  date.month == now.month &&
-                  date.day == now.day;
-            }
-            return false;
+            final date = _extractDate(data['createdAt']);
+            if (date == null) return false;
+            final now = DateTime.now();
+            return date.year == now.year &&
+                date.month == now.month &&
+                date.day == now.day;
           }).toList();
 
           return Column(
@@ -73,52 +97,93 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 padding: const EdgeInsets.only(
-                  top: 48,
-                  bottom: 28,
-                  left: 20,
-                  right: 20,
+                  top: 40,
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
                 ),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'November 2025',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, color: Colors.white),
+                          onPressed: () => _changeMonth(-1),
+                        ),
+                        Expanded(
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: _showMonthPicker,
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        _monthName(_selectedMonth),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_drop_down, color: Colors.white),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: _showYearPicker,
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        '$_selectedYear',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_drop_down, color: Colors.white),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, color: Colors.white),
+                          onPressed: () => _changeMonth(1),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.dehaze, color: Colors.white),
+                          onPressed: () => _showDisplayOptionsSheet(context),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Remaining Balance',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '₱${remainingBalance.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Income\n+₱${totalIncome.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Colors.greenAccent,
-                            fontSize: 16,
-                          ),
+                        _summaryItem(
+                          label: 'EXPENSE',
+                          value: '-₱${totalExpense.toStringAsFixed(2)}',
+                          valueColor: Colors.redAccent,
                         ),
-                        Text(
-                          'Expenses\n-₱${totalExpense.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 16,
-                          ),
+                        _summaryItem(
+                          label: 'INCOME',
+                          value: '+₱${totalIncome.toStringAsFixed(2)}',
+                          valueColor: Colors.greenAccent,
+                        ),
+                        _summaryItem(
+                          label: 'TOTAL',
+                          value: '₱${remainingBalance.toStringAsFixed(2)}',
+                          valueColor: remainingBalance >= 0
+                              ? Colors.white
+                              : Colors.redAccent,
                         ),
                       ],
                     ),
@@ -130,23 +195,21 @@ class HomeScreen extends StatelessWidget {
 
               // Recent + Daily
               Expanded(
-                child: docs.isEmpty
+                child: filteredDocs.isEmpty
                     ? const Center(child: Text('No transactions yet.'))
                     : ListView(
-                        controller: scrollController,
+                        controller: widget.scrollController,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
                         children: [
-                          ...docs.map((d) {
+                          ...filteredDocs.map((d) {
                             final data = d.data()! as Map<String, dynamic>;
                             final amount =
                                 (data['amount'] as num?)?.toDouble() ?? 0;
                             final isExpense = amount < 0;
-                            final ts = data['createdAt'];
-                            final time =
-                                ts is Timestamp ? ts.toDate() : DateTime.now();
+                            final time = _extractDate(data['createdAt']) ?? DateTime.now();
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -434,6 +497,107 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  void _changeMonth(int delta) {
+    final updated = DateTime(_selectedYear, _selectedMonth + delta);
+    _reloadTransactionsForSelectedPeriod(
+      month: updated.month,
+      year: updated.year,
+    );
+  }
+
+  void _showMonthPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView.builder(
+            itemCount: 12,
+            itemBuilder: (context, index) {
+              final month = index + 1;
+              final isSelected = month == _selectedMonth;
+              return ListTile(
+                title: Text(
+                  _monthName(month),
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reloadTransactionsForSelectedPeriod(month: month);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showYearPicker() {
+    final currentYear = DateTime.now().year;
+    final startYear = currentYear - 10;
+    final endYear = currentYear + 10;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView.builder(
+            itemCount: endYear - startYear + 1,
+            itemBuilder: (context, index) {
+              final year = startYear + index;
+              final isSelected = year == _selectedYear;
+              return ListTile(
+                title: Text(
+                  '$year',
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reloadTransactionsForSelectedPeriod(year: year);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _reloadTransactionsForSelectedPeriod({int? month, int? year}) {
+    setState(() {
+      if (month != null) _selectedMonth = month;
+      if (year != null) _selectedYear = year;
+      _rangeStart = DateTime(_selectedYear, _selectedMonth);
+      _rangeEnd = DateTime(_selectedYear, _selectedMonth + 1);
+    });
+  }
+
+  String _monthName(int month) {
+    return DateFormat.MMMM().format(DateTime(0, month));
+  }
+
+  DateTime? _extractDate(dynamic raw) {
+    if (raw is Timestamp) return raw.toDate();
+    if (raw is DateTime) return raw;
+    return null;
+  }
+
   // Tiny icon button used in the middle column
   Widget _miniIconButton({
     required IconData icon,
@@ -450,6 +614,95 @@ class HomeScreen extends StatelessWidget {
         minHeight: 32,
       ),
       splashRadius: 18,
+    );
+  }
+
+  Widget _summaryItem({
+    required String label,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showDisplayOptionsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Center(
+                  child: Text(
+                    'Display Option',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'View mode:',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                SizedBox(height: 8),
+                Text('✓ DAILY', style: TextStyle(color: Colors.white)),
+                SizedBox(height: 4),
+                Text('WEEKLY', style: TextStyle(color: Colors.white70)),
+                SizedBox(height: 4),
+                Text('MONTHLY', style: TextStyle(color: Colors.white70)),
+                SizedBox(height: 16),
+                Text(
+                  'Show total:',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                SizedBox(height: 8),
+                Text('✓ YES', style: TextStyle(color: Colors.white)),
+                SizedBox(height: 4),
+                Text('NO', style: TextStyle(color: Colors.white70)),
+                SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
