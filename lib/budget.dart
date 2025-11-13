@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class BudgetScreen extends StatefulWidget {
-  const BudgetScreen({super.key});
+  final ScrollController? scrollController;
+
+  const BudgetScreen({super.key, this.scrollController});
 
   @override
   State<BudgetScreen> createState() => _BudgetScreenState();
@@ -79,6 +81,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
           return ListView(
             padding: const EdgeInsets.all(16),
+            controller: widget.scrollController,
             children: [
               _buildSummaryCard(totalIncome, totalExpense, totalLeft),
               const SizedBox(height: 20),

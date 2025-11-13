@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AccountsScreen extends StatelessWidget {
-  const AccountsScreen({super.key});
+  final ScrollController? scrollController;
+
+  const AccountsScreen({super.key, this.scrollController});
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +22,7 @@ class AccountsScreen extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
+        controller: scrollController,
         children: [
           _buildNetWorthCard(),
           const SizedBox(height: 20),
