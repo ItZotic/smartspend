@@ -5,7 +5,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
 class AnalyticsScreen extends StatelessWidget {
-  const AnalyticsScreen({super.key});
+  final ScrollController? scrollController;
+
+  const AnalyticsScreen({super.key, this.scrollController});
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +92,7 @@ class AnalyticsScreen extends StatelessWidget {
 
           return ListView(
             padding: const EdgeInsets.all(16),
+            controller: scrollController,
             children: [
               Row(
                 children: [
