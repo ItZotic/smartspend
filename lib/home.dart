@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
+enum ViewMode { daily, monthly }
+
 class HomeScreen extends StatefulWidget {
   final ScrollController? scrollController;
 
@@ -13,10 +15,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  ViewMode _viewMode = ViewMode.monthly;
   late int _selectedMonth;
   late int _selectedYear;
-  late DateTime _rangeStart;
-  late DateTime _rangeEnd;
+  late DateTime _selectedDay;
 
   @override
   void initState() {
@@ -24,8 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final now = DateTime.now();
     _selectedMonth = now.month;
     _selectedYear = now.year;
-    _rangeStart = DateTime(_selectedYear, _selectedMonth);
-    _rangeEnd = DateTime(_selectedYear, _selectedMonth + 1);
+    _selectedDay = DateTime(now.year, now.month, now.day);
   }
 
   @override
@@ -53,12 +54,19 @@ class _HomeScreenState extends State<HomeScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data?.docs ?? [];
-          final filteredDocs = docs.where((doc) {
+          final allDocs = snapshot.data?.docs ?? [];
+          final filteredDocs = allDocs.where((doc) {
             final data = doc.data()! as Map<String, dynamic>;
-            final date = _extractDate(data['createdAt']);
+            final date = _extractDate(data['date'] ?? data['createdAt']);
             if (date == null) return false;
-            return !date.isBefore(_rangeStart) && date.isBefore(_rangeEnd);
+            if (_viewMode == ViewMode.daily) {
+              return date.year == _selectedDay.year &&
+                  date.month == _selectedDay.month &&
+                  date.day == _selectedDay.day;
+            } else {
+              return date.year == _selectedYear &&
+                  date.month == _selectedMonth;
+            }
           }).toList();
 
           double totalIncome = 0;
@@ -78,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           final todaysRecords = filteredDocs.where((d) {
             final data = d.data()! as Map<String, dynamic>;
-            final date = _extractDate(data['createdAt']);
+            final date = _extractDate(data['date'] ?? data['createdAt']);
             if (date == null) return false;
             final now = DateTime.now();
             return date.year == now.year &&
@@ -107,56 +115,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left, color: Colors.white),
-                          onPressed: () => _changeMonth(-1),
-                        ),
-                        Expanded(
-                          child: Center(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                GestureDetector(
-                                  onTap: _showMonthPicker,
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        _monthName(_selectedMonth),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const Icon(Icons.arrow_drop_down, color: Colors.white),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: _showYearPicker,
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        '$_selectedYear',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const Icon(Icons.arrow_drop_down, color: Colors.white),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                        const Text(
+                          'SmartSpend',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.chevron_right, color: Colors.white),
-                          onPressed: () => _changeMonth(1),
+                          onPressed: () {
+                            showSearch(
+                              context: context,
+                              delegate: TransactionSearchDelegate(allDocs),
+                            );
+                          },
+                          icon: const Icon(Icons.search, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              '${_monthName(_selectedMonth)}  •  $_selectedYear',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.dehaze, color: Colors.white),
@@ -209,7 +202,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             final amount =
                                 (data['amount'] as num?)?.toDouble() ?? 0;
                             final isExpense = amount < 0;
-                            final time = _extractDate(data['createdAt']) ?? DateTime.now();
+                            final time =
+                                _extractDate(data['date'] ?? data['createdAt']) ??
+                                    DateTime.now();
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -498,94 +493,170 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _changeMonth(int delta) {
-    final updated = DateTime(_selectedYear, _selectedMonth + delta);
-    _reloadTransactionsForSelectedPeriod(
-      month: updated.month,
-      year: updated.year,
-    );
-  }
-
-  void _showMonthPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[900],
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: ListView.builder(
-            itemCount: 12,
-            itemBuilder: (context, index) {
-              final month = index + 1;
-              final isSelected = month == _selectedMonth;
-              return ListTile(
-                title: Text(
-                  _monthName(month),
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _reloadTransactionsForSelectedPeriod(month: month);
-                },
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  void _showYearPicker() {
-    final currentYear = DateTime.now().year;
-    final startYear = currentYear - 10;
-    final endYear = currentYear + 10;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[900],
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: ListView.builder(
-            itemCount: endYear - startYear + 1,
-            itemBuilder: (context, index) {
-              final year = startYear + index;
-              final isSelected = year == _selectedYear;
-              return ListTile(
-                title: Text(
-                  '$year',
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _reloadTransactionsForSelectedPeriod(year: year);
-                },
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  void _reloadTransactionsForSelectedPeriod({int? month, int? year}) {
     setState(() {
-      if (month != null) _selectedMonth = month;
-      if (year != null) _selectedYear = year;
-      _rangeStart = DateTime(_selectedYear, _selectedMonth);
-      _rangeEnd = DateTime(_selectedYear, _selectedMonth + 1);
+      final updated = DateTime(_selectedYear, _selectedMonth + delta, 1);
+      _selectedMonth = updated.month;
+      _selectedYear = updated.year;
+      _syncSelectedDayWithMonth();
     });
+  }
+
+  void _changeDay(int delta) {
+    setState(() {
+      _selectedDay = _selectedDay.add(Duration(days: delta));
+      _selectedMonth = _selectedDay.month;
+      _selectedYear = _selectedDay.year;
+    });
+  }
+
+  void _changeViewMode(ViewMode mode) {
+    if (_viewMode == mode) return;
+    setState(() {
+      _viewMode = mode;
+      if (mode == ViewMode.monthly) {
+        _selectedMonth = _selectedDay.month;
+        _selectedYear = _selectedDay.year;
+      } else {
+        _syncSelectedDayWithMonth();
+      }
+    });
+  }
+
+  void _syncSelectedDayWithMonth() {
+    var day = _selectedDay.day;
+    final maxDay = DateUtils.getDaysInMonth(_selectedYear, _selectedMonth);
+    if (day > maxDay) day = maxDay;
+    if (day < 1) day = 1;
+    _selectedDay = DateTime(_selectedYear, _selectedMonth, day);
+  }
+
+  void _showDisplayOptionsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'View Mode',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _viewModeButton(
+                            label: 'Daily',
+                            selected: _viewMode == ViewMode.daily,
+                            onTap: () {
+                              _changeViewMode(ViewMode.daily);
+                              setModalState(() {});
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _viewModeButton(
+                            label: 'Monthly',
+                            selected: _viewMode == ViewMode.monthly,
+                            onTap: () {
+                              _changeViewMode(ViewMode.monthly);
+                              setModalState(() {});
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _viewMode == ViewMode.daily
+                          ? 'Selected Day'
+                          : 'Selected Month',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            if (_viewMode == ViewMode.daily) {
+                              _changeDay(-1);
+                            } else {
+                              _changeMonth(-1);
+                            }
+                            setModalState(() {});
+                          },
+                          icon: const Icon(Icons.chevron_left,
+                              color: Colors.white),
+                        ),
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              _viewMode == ViewMode.daily
+                                  ? DateFormat('MMM d, yyyy')
+                                      .format(_selectedDay)
+                                  : '${_monthName(_selectedMonth)} $_selectedYear',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            if (_viewMode == ViewMode.daily) {
+                              _changeDay(1);
+                            } else {
+                              _changeMonth(1);
+                            }
+                            setModalState(() {});
+                          },
+                          icon: const Icon(Icons.chevron_right,
+                              color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   String _monthName(int month) {
@@ -646,63 +717,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showDisplayOptionsSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(20),
+  Widget _viewModeButton({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white24 : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_off,
+              color: Colors.white,
+              size: 18,
             ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 20,
+            const SizedBox(width: 8),
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Center(
-                  child: Text(
-                    'Display Option',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'View mode:',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                SizedBox(height: 8),
-                Text('✓ DAILY', style: TextStyle(color: Colors.white)),
-                SizedBox(height: 4),
-                Text('WEEKLY', style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 4),
-                Text('MONTHLY', style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 16),
-                Text(
-                  'Show total:',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                SizedBox(height: 8),
-                Text('✓ YES', style: TextStyle(color: Colors.white)),
-                SizedBox(height: 4),
-                Text('NO', style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
@@ -796,6 +845,91 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
           const SizedBox(height: 16),
         ],
       ),
+    );
+  }
+}
+
+class TransactionSearchDelegate extends SearchDelegate<void> {
+  final List<QueryDocumentSnapshot> allDocs;
+
+  TransactionSearchDelegate(this.allDocs);
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () {
+            query = '';
+            showSuggestions(context);
+          },
+        ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    final matches = _filterDocs();
+    if (matches.isEmpty) {
+      return const Center(
+        child: Text('No matching records found.'),
+      );
+    }
+    return _buildList(matches);
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    if (query.trim().isEmpty) {
+      return const Center(
+        child: Text('Search by note, category, or account name.'),
+      );
+    }
+    final matches = _filterDocs();
+    if (matches.isEmpty) {
+      return const Center(
+        child: Text('No matching records found.'),
+      );
+    }
+    return _buildList(matches);
+  }
+
+  List<QueryDocumentSnapshot> _filterDocs() {
+    final keyword = query.trim().toLowerCase();
+    if (keyword.isEmpty) return [];
+    return allDocs.where((doc) {
+      final data = doc.data()! as Map<String, dynamic>;
+      final note = (data['note'] ?? '').toString().toLowerCase();
+      final category = (data['category'] ?? '').toString().toLowerCase();
+      final account = (data['accountName'] ?? '').toString().toLowerCase();
+      return note.contains(keyword) ||
+          category.contains(keyword) ||
+          account.contains(keyword);
+    }).toList();
+  }
+
+  Widget _buildList(List<QueryDocumentSnapshot> matches) {
+    return ListView.builder(
+      itemCount: matches.length,
+      itemBuilder: (context, index) {
+        final data = matches[index].data()! as Map<String, dynamic>;
+        final note = (data['note'] ?? '').toString();
+        final category = (data['category'] ?? '').toString();
+        final accountName = (data['accountName'] ?? '').toString();
+        return ListTile(
+          title: Text(note),
+          subtitle: Text('$category  •  $accountName'),
+        );
+      },
     );
   }
 }
