@@ -54,8 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data?.docs ?? [];
-          final filteredDocs = docs.where((doc) {
+          final allDocs = snapshot.data?.docs ?? [];
+          final filteredDocs = allDocs.where((doc) {
             final data = doc.data()! as Map<String, dynamic>;
             final date = _extractDate(data['date'] ?? data['createdAt']);
             if (date == null) return false;
@@ -115,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Center(
@@ -822,6 +823,91 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
           const SizedBox(height: 16),
         ],
       ),
+    );
+  }
+}
+
+class TransactionSearchDelegate extends SearchDelegate<void> {
+  final List<QueryDocumentSnapshot> allDocs;
+
+  TransactionSearchDelegate(this.allDocs);
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () {
+            query = '';
+            showSuggestions(context);
+          },
+        ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    final matches = _filterDocs();
+    if (matches.isEmpty) {
+      return const Center(
+        child: Text('No matching records found.'),
+      );
+    }
+    return _buildList(matches);
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    if (query.trim().isEmpty) {
+      return const Center(
+        child: Text('Search by note, category, or account name.'),
+      );
+    }
+    final matches = _filterDocs();
+    if (matches.isEmpty) {
+      return const Center(
+        child: Text('No matching records found.'),
+      );
+    }
+    return _buildList(matches);
+  }
+
+  List<QueryDocumentSnapshot> _filterDocs() {
+    final keyword = query.trim().toLowerCase();
+    if (keyword.isEmpty) return [];
+    return allDocs.where((doc) {
+      final data = doc.data()! as Map<String, dynamic>;
+      final note = (data['note'] ?? '').toString().toLowerCase();
+      final category = (data['category'] ?? '').toString().toLowerCase();
+      final account = (data['accountName'] ?? '').toString().toLowerCase();
+      return note.contains(keyword) ||
+          category.contains(keyword) ||
+          account.contains(keyword);
+    }).toList();
+  }
+
+  Widget _buildList(List<QueryDocumentSnapshot> matches) {
+    return ListView.builder(
+      itemCount: matches.length,
+      itemBuilder: (context, index) {
+        final data = matches[index].data()! as Map<String, dynamic>;
+        final note = (data['note'] ?? '').toString();
+        final category = (data['category'] ?? '').toString();
+        final accountName = (data['accountName'] ?? '').toString();
+        return ListTile(
+          title: Text(note),
+          subtitle: Text('$category  •  $accountName'),
+        );
+      },
     );
   }
 }
