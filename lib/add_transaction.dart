@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -16,6 +17,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _category = 'Food & Dining';
   String _account = 'Cash';
   String _type = 'Expense'; // 'Expense' or 'Income'
+
+  DateTime _selectedDate = DateTime.now();
 
   // Amount as text built by the keypad
   String _amountText = '';
@@ -79,7 +82,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         'account': _account,
         'amount': signedAmount,
         'type': _type,
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': Timestamp.fromDate(_selectedDate),
       });
 
       if (!mounted) return;
@@ -226,6 +229,33 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: _type == 'Expense' ? Colors.redAccent : Colors.green,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              InkWell(
+                onTap: _pickDate,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                    color: Colors.white,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 20, color: Colors.black54),
+                      const SizedBox(width: 12),
+                      Text(
+                        DateFormat('MMM dd, yyyy').format(_selectedDate),
+                        style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.expand_more, color: Colors.black54),
+                    ],
                   ),
                 ),
               ),
@@ -402,5 +432,20 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             : Icon(icon),
       ),
     );
+  }
+
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
   }
 }
