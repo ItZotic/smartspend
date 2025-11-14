@@ -117,6 +117,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        const Text(
+                          'SmartSpend',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            showSearch(
+                              context: context,
+                              delegate: TransactionSearchDelegate(allDocs),
+                            );
+                          },
+                          icon:
+                              const Icon(Icons.search, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Expanded(
                           child: Center(
                             child: Text(
@@ -868,9 +892,7 @@ class TransactionSearchDelegate extends SearchDelegate<void> {
   @override
   Widget buildSuggestions(BuildContext context) {
     if (query.trim().isEmpty) {
-      return const Center(
-        child: Text('Search by note, category, or account name.'),
-      );
+      return const SizedBox.shrink();
     }
     final matches = _filterDocs();
     if (matches.isEmpty) {
