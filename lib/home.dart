@@ -892,9 +892,7 @@ class TransactionSearchDelegate extends SearchDelegate<void> {
   @override
   Widget buildSuggestions(BuildContext context) {
     if (query.trim().isEmpty) {
-      return const Center(
-        child: Text('Search by note, category, or account name.'),
-      );
+      return const SizedBox.shrink();
     }
     final matches = _filterDocs();
     if (matches.isEmpty) {
