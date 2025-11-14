@@ -117,6 +117,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        const Text(
+                          'SmartSpend',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            showSearch(
+                              context: context,
+                              delegate: TransactionSearchDelegate(allDocs),
+                            );
+                          },
+                          icon:
+                              const Icon(Icons.search, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Expanded(
                           child: Center(
                             child: Text(
