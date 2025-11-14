@@ -12,13 +12,11 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-enum ViewMode { daily, monthly }
-
 class _HomeScreenState extends State<HomeScreen> {
-  ViewMode _viewMode = ViewMode.monthly;
   late int _selectedMonth;
   late int _selectedYear;
-  late DateTime _selectedDay;
+  late DateTime _rangeStart;
+  late DateTime _rangeEnd;
 
   @override
   void initState() {
@@ -26,7 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final now = DateTime.now();
     _selectedMonth = now.month;
     _selectedYear = now.year;
-    _selectedDay = DateTime(now.year, now.month, now.day);
+    _rangeStart = DateTime(_selectedYear, _selectedMonth);
+    _rangeEnd = DateTime(_selectedYear, _selectedMonth + 1);
   }
 
   @override
@@ -59,13 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
             final data = doc.data()! as Map<String, dynamic>;
             final date = _extractDate(data['createdAt']);
             if (date == null) return false;
-            if (_viewMode == ViewMode.daily) {
-              return date.year == _selectedDay.year &&
-                  date.month == _selectedDay.month &&
-                  date.day == _selectedDay.day;
-            }
-            return date.year == _selectedYear &&
-                date.month == _selectedMonth;
+            return !date.isBefore(_rangeStart) && date.isBefore(_rangeEnd);
           }).toList();
 
           double totalIncome = 0;
@@ -115,17 +108,55 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Row(
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, color: Colors.white),
+                          onPressed: () => _changeMonth(-1),
+                        ),
                         Expanded(
                           child: Center(
-                            child: Text(
-                              '${_monthName(_selectedMonth)}  •  $_selectedYear',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: _showMonthPicker,
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        _monthName(_selectedMonth),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_drop_down, color: Colors.white),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: _showYearPicker,
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        '$_selectedYear',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_drop_down, color: Colors.white),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, color: Colors.white),
+                          onPressed: () => _changeMonth(1),
                         ),
                         IconButton(
                           icon: const Icon(Icons.dehaze, color: Colors.white),
@@ -466,6 +497,97 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _changeMonth(int delta) {
+    final updated = DateTime(_selectedYear, _selectedMonth + delta);
+    _reloadTransactionsForSelectedPeriod(
+      month: updated.month,
+      year: updated.year,
+    );
+  }
+
+  void _showMonthPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView.builder(
+            itemCount: 12,
+            itemBuilder: (context, index) {
+              final month = index + 1;
+              final isSelected = month == _selectedMonth;
+              return ListTile(
+                title: Text(
+                  _monthName(month),
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reloadTransactionsForSelectedPeriod(month: month);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showYearPicker() {
+    final currentYear = DateTime.now().year;
+    final startYear = currentYear - 10;
+    final endYear = currentYear + 10;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView.builder(
+            itemCount: endYear - startYear + 1,
+            itemBuilder: (context, index) {
+              final year = startYear + index;
+              final isSelected = year == _selectedYear;
+              return ListTile(
+                title: Text(
+                  '$year',
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reloadTransactionsForSelectedPeriod(year: year);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _reloadTransactionsForSelectedPeriod({int? month, int? year}) {
+    setState(() {
+      if (month != null) _selectedMonth = month;
+      if (year != null) _selectedYear = year;
+      _rangeStart = DateTime(_selectedYear, _selectedMonth);
+      _rangeEnd = DateTime(_selectedYear, _selectedMonth + 1);
+    });
+  }
+
   String _monthName(int month) {
     return DateFormat.MMMM().format(DateTime(0, month));
   }
@@ -529,143 +651,59 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            void changeViewMode(ViewMode mode) {
-              if (_viewMode == mode) return;
-              setState(() => _viewMode = mode);
-              setSheetState(() {});
-            }
-
-            void changeMonth(int delta) {
-              setState(() {
-                final newDate = DateTime(_selectedYear, _selectedMonth + delta, 1);
-                _updateMonthYear(newDate.year, newDate.month);
-              });
-              setSheetState(() {});
-            }
-
-            void changeDay(int delta) {
-              setState(() {
-                final newDay = _selectedDay.add(Duration(days: delta));
-                _updateSelectedDay(newDay);
-              });
-              setSheetState(() {});
-            }
-
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[850],
-                  borderRadius: BorderRadius.circular(20),
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Center(
+                  child: Text(
+                    'Display Option',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 20,
+                SizedBox(height: 16),
+                Text(
+                  'View mode:',
+                  style: TextStyle(color: Colors.white70),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Center(
-                      child: Text(
-                        'Display Option',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'View mode:',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    RadioListTile<ViewMode>(
-                      value: ViewMode.daily,
-                      groupValue: _viewMode,
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      activeColor: Colors.white,
-                      title: const Text('Daily', style: TextStyle(color: Colors.white)),
-                      onChanged: (_) => changeViewMode(ViewMode.daily),
-                    ),
-                    RadioListTile<ViewMode>(
-                      value: ViewMode.monthly,
-                      groupValue: _viewMode,
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      activeColor: Colors.white,
-                      title: const Text('Monthly', style: TextStyle(color: Colors.white)),
-                      onChanged: (_) => changeViewMode(ViewMode.monthly),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Period:',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_viewMode == ViewMode.daily)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left, color: Colors.white),
-                            onPressed: () => changeDay(-1),
-                          ),
-                          Text(
-                            DateFormat('MMM dd, yyyy').format(_selectedDay),
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right, color: Colors.white),
-                            onPressed: () => changeDay(1),
-                          ),
-                        ],
-                      )
-                    else
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left, color: Colors.white),
-                            onPressed: () => changeMonth(-1),
-                          ),
-                          Text(
-                            '${_monthName(_selectedMonth)} $_selectedYear',
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right, color: Colors.white),
-                            onPressed: () => changeMonth(1),
-                          ),
-                        ],
-                      ),
-                  ],
+                SizedBox(height: 8),
+                Text('✓ DAILY', style: TextStyle(color: Colors.white)),
+                SizedBox(height: 4),
+                Text('WEEKLY', style: TextStyle(color: Colors.white70)),
+                SizedBox(height: 4),
+                Text('MONTHLY', style: TextStyle(color: Colors.white70)),
+                SizedBox(height: 16),
+                Text(
+                  'Show total:',
+                  style: TextStyle(color: Colors.white70),
                 ),
-              ),
-            );
-          },
+                SizedBox(height: 8),
+                Text('✓ YES', style: TextStyle(color: Colors.white)),
+                SizedBox(height: 4),
+                Text('NO', style: TextStyle(color: Colors.white70)),
+                SizedBox(height: 8),
+              ],
+            ),
+          ),
         );
       },
     );
-  }
-
-  void _updateMonthYear(int year, int month) {
-    final daysInMonth = DateTime(year, month + 1, 0).day;
-    final safeDay = _selectedDay.day > daysInMonth ? daysInMonth : _selectedDay.day;
-    _selectedMonth = month;
-    _selectedYear = year;
-    _selectedDay = DateTime(year, month, safeDay);
-  }
-
-  void _updateSelectedDay(DateTime newDay) {
-    _selectedDay = DateTime(newDay.year, newDay.month, newDay.day);
-    _selectedMonth = newDay.month;
-    _selectedYear = newDay.year;
   }
 }
 
