@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final ScrollController? scrollController;
 
   const HomeScreen({super.key, this.scrollController});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+enum ViewMode { daily, monthly }
+
+class _HomeScreenState extends State<HomeScreen> {
+  ViewMode _viewMode = ViewMode.monthly;
+  late int _selectedMonth;
+  late int _selectedYear;
+  late DateTime _selectedDay;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedMonth = now.month;
+    _selectedYear = now.year;
+    _selectedDay = DateTime(now.year, now.month, now.day);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +55,23 @@ class HomeScreen extends StatelessWidget {
           }
 
           final docs = snapshot.data?.docs ?? [];
+          final filteredDocs = docs.where((doc) {
+            final data = doc.data()! as Map<String, dynamic>;
+            final date = _extractDate(data['createdAt']);
+            if (date == null) return false;
+            if (_viewMode == ViewMode.daily) {
+              return date.year == _selectedDay.year &&
+                  date.month == _selectedDay.month &&
+                  date.day == _selectedDay.day;
+            }
+            return date.year == _selectedYear &&
+                date.month == _selectedMonth;
+          }).toList();
 
           double totalIncome = 0;
           double totalExpense = 0;
 
-          for (final doc in docs) {
+          for (final doc in filteredDocs) {
             final data = doc.data()! as Map<String, dynamic>;
             final amount = (data['amount'] as num?)?.toDouble() ?? 0;
             if (amount >= 0) {
@@ -49,17 +83,14 @@ class HomeScreen extends StatelessWidget {
 
           final remainingBalance = totalIncome - totalExpense;
 
+          final now = DateTime.now();
           final todaysRecords = docs.where((d) {
             final data = d.data()! as Map<String, dynamic>;
-            final ts = data['createdAt'];
-            if (ts is Timestamp) {
-              final date = ts.toDate();
-              final now = DateTime.now();
-              return date.year == now.year &&
-                  date.month == now.month &&
-                  date.day == now.day;
-            }
-            return false;
+            final date = _extractDate(data['createdAt']);
+            if (date == null) return false;
+            return date.year == now.year &&
+                date.month == now.month &&
+                date.day == now.day;
           }).toList();
 
           return Column(
@@ -73,52 +104,55 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 padding: const EdgeInsets.only(
-                  top: 48,
-                  bottom: 28,
-                  left: 20,
-                  right: 20,
+                  top: 40,
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
                 ),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'November 2025',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              '${_monthName(_selectedMonth)}  •  $_selectedYear',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.dehaze, color: Colors.white),
+                          onPressed: () => _showDisplayOptionsSheet(context),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Remaining Balance',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '₱${remainingBalance.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Income\n+₱${totalIncome.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Colors.greenAccent,
-                            fontSize: 16,
-                          ),
+                        _summaryItem(
+                          label: 'EXPENSE',
+                          value: '-₱${totalExpense.toStringAsFixed(2)}',
+                          valueColor: Colors.redAccent,
                         ),
-                        Text(
-                          'Expenses\n-₱${totalExpense.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 16,
-                          ),
+                        _summaryItem(
+                          label: 'INCOME',
+                          value: '+₱${totalIncome.toStringAsFixed(2)}',
+                          valueColor: Colors.greenAccent,
+                        ),
+                        _summaryItem(
+                          label: 'TOTAL',
+                          value: '₱${remainingBalance.toStringAsFixed(2)}',
+                          valueColor: remainingBalance >= 0
+                              ? Colors.white
+                              : Colors.redAccent,
                         ),
                       ],
                     ),
@@ -130,23 +164,21 @@ class HomeScreen extends StatelessWidget {
 
               // Recent + Daily
               Expanded(
-                child: docs.isEmpty
-                    ? const Center(child: Text('No transactions yet.'))
+                child: filteredDocs.isEmpty
+                    ? const Center(child: Text('No transactions for this period.'))
                     : ListView(
-                        controller: scrollController,
+                        controller: widget.scrollController,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
                         children: [
-                          ...docs.map((d) {
+                          ...filteredDocs.map((d) {
                             final data = d.data()! as Map<String, dynamic>;
                             final amount =
                                 (data['amount'] as num?)?.toDouble() ?? 0;
                             final isExpense = amount < 0;
-                            final ts = data['createdAt'];
-                            final time =
-                                ts is Timestamp ? ts.toDate() : DateTime.now();
+                            final time = _extractDate(data['createdAt']) ?? DateTime.now();
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -434,6 +466,16 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  String _monthName(int month) {
+    return DateFormat.MMMM().format(DateTime(0, month));
+  }
+
+  DateTime? _extractDate(dynamic raw) {
+    if (raw is Timestamp) return raw.toDate();
+    if (raw is DateTime) return raw;
+    return null;
+  }
+
   // Tiny icon button used in the middle column
   Widget _miniIconButton({
     required IconData icon,
@@ -451,6 +493,179 @@ class HomeScreen extends StatelessWidget {
       ),
       splashRadius: 18,
     );
+  }
+
+  Widget _summaryItem({
+    required String label,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showDisplayOptionsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            void changeViewMode(ViewMode mode) {
+              if (_viewMode == mode) return;
+              setState(() => _viewMode = mode);
+              setSheetState(() {});
+            }
+
+            void changeMonth(int delta) {
+              setState(() {
+                final newDate = DateTime(_selectedYear, _selectedMonth + delta, 1);
+                _updateMonthYear(newDate.year, newDate.month);
+              });
+              setSheetState(() {});
+            }
+
+            void changeDay(int delta) {
+              setState(() {
+                final newDay = _selectedDay.add(Duration(days: delta));
+                _updateSelectedDay(newDay);
+              });
+              setSheetState(() {});
+            }
+
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[850],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Center(
+                      child: Text(
+                        'Display Option',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'View mode:',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    RadioListTile<ViewMode>(
+                      value: ViewMode.daily,
+                      groupValue: _viewMode,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      activeColor: Colors.white,
+                      title: const Text('Daily', style: TextStyle(color: Colors.white)),
+                      onChanged: (_) => changeViewMode(ViewMode.daily),
+                    ),
+                    RadioListTile<ViewMode>(
+                      value: ViewMode.monthly,
+                      groupValue: _viewMode,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      activeColor: Colors.white,
+                      title: const Text('Monthly', style: TextStyle(color: Colors.white)),
+                      onChanged: (_) => changeViewMode(ViewMode.monthly),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Period:',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_viewMode == ViewMode.daily)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left, color: Colors.white),
+                            onPressed: () => changeDay(-1),
+                          ),
+                          Text(
+                            DateFormat('MMM dd, yyyy').format(_selectedDay),
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right, color: Colors.white),
+                            onPressed: () => changeDay(1),
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left, color: Colors.white),
+                            onPressed: () => changeMonth(-1),
+                          ),
+                          Text(
+                            '${_monthName(_selectedMonth)} $_selectedYear',
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right, color: Colors.white),
+                            onPressed: () => changeMonth(1),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _updateMonthYear(int year, int month) {
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final safeDay = _selectedDay.day > daysInMonth ? daysInMonth : _selectedDay.day;
+    _selectedMonth = month;
+    _selectedYear = year;
+    _selectedDay = DateTime(year, month, safeDay);
+  }
+
+  void _updateSelectedDay(DateTime newDay) {
+    _selectedDay = DateTime(newDay.year, newDay.month, newDay.day);
+    _selectedMonth = newDay.month;
+    _selectedYear = newDay.year;
   }
 }
 

@@ -18,16 +18,20 @@ class MainMenuScreen extends StatefulWidget {
 class _MainMenuScreenState extends State<MainMenuScreen> {
   final AuthService _authService = AuthService();
   int _selectedIndex = 0;
-  late final ScrollController _scrollController;
+  late final ScrollController _homeScrollController;
+  late final ScrollController _budgetScrollController;
+  late final ScrollController _analyticsScrollController;
+  late final ScrollController _accountsScrollController;
   late final List<Widget> _pages;
   bool _fabVisible = true;
+  final Map<ScrollController, VoidCallback> _controllerListeners = {};
 
   // pages for bottom nav
-  void _handleScroll() {
-    if (!_scrollController.hasClients) {
+  void _handleScroll(ScrollController controller) {
+    if (!controller.hasClients) {
       return;
     }
-    final direction = _scrollController.position.userScrollDirection;
+    final direction = controller.position.userScrollDirection;
     if (direction == ScrollDirection.reverse && _fabVisible) {
       setState(() => _fabVisible = false);
     } else if (direction == ScrollDirection.forward && !_fabVisible) {
@@ -35,25 +39,45 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     }
   }
 
+  void _registerController(ScrollController controller) {
+    void listener() => _handleScroll(controller);
+    controller.addListener(listener);
+    _controllerListeners[controller] = listener;
+  }
+
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_handleScroll);
+    _homeScrollController = ScrollController();
+    _budgetScrollController = ScrollController();
+    _analyticsScrollController = ScrollController();
+    _accountsScrollController = ScrollController();
+
+    for (final controller in [
+      _homeScrollController,
+      _budgetScrollController,
+      _analyticsScrollController,
+      _accountsScrollController,
+    ]) {
+      _registerController(controller);
+    }
     _pages = [
-      HomeScreen(scrollController: _scrollController),
-      const BudgetScreen(),
-      const AnalyticsScreen(),
-      const AccountsScreen(),
+      HomeScreen(scrollController: _homeScrollController),
+      BudgetScreen(scrollController: _budgetScrollController),
+      AnalyticsScreen(scrollController: _analyticsScrollController),
+      AccountsScreen(scrollController: _accountsScrollController),
       const SettingsScreen(),
     ];
   }
 
   @override
   void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
+    _controllerListeners.forEach((controller, listener) {
+      controller
+        ..removeListener(listener)
+        ..dispose();
+    });
+    _controllerListeners.clear();
     super.dispose();
   }
 
