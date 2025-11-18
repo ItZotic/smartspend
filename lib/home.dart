@@ -18,8 +18,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final user = FirebaseAuth.instance.currentUser;
-  final FirestoreService _firestoreService = FirestoreService();
+  DateTime _selectedDate = DateTime.now();
+  bool _isDailyView = true;
+  List<QueryDocumentSnapshot> _latestDocs = [];
+
+  String get _dateTitle {
+    if (_isDailyView) {
+      return DateFormat('MMM d, yyyy').format(_selectedDate);
+    } else {
+      return DateFormat('MMMM yyyy').format(_selectedDate);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,132 +44,163 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null) return const Center(child: Text("Please log in."));
 
     return Scaffold(
-      // No AppBar! Design flows to top.
-      body: Stack(
-        children: [
-          // 1. Background Gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [bgTop, bgBottom],
-              ),
-            ),
+      appBar: AppBar(
+        backgroundColor: navy,
+        elevation: 0,
+        title: const Text('SmartSpend'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: TransactionSearchDelegate(_latestDocs),
+              );
+            },
           ),
+        ],
+      ),
+      resizeToAvoidBottomInset: true,
+      backgroundColor: const Color(0xFFF5F6FA),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: transactionsStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          // 2. Background Glows
-          Positioned(
-            top: -60,
-            left: -60,
-            child: _buildBlurCircle(primaryBlue.withOpacity(0.2), 300),
-          ),
-          Positioned(
-            top: 200,
-            right: -80,
-            child: _buildBlurCircle(Colors.cyanAccent.withOpacity(0.15), 250),
-          ),
+          final allDocs = snapshot.data?.docs ?? [];
+          _latestDocs = allDocs;
+          final filteredDocs = allDocs.where((doc) {
+            final data = doc.data()! as Map<String, dynamic>;
+            final date = _extractDate(data['date'] ?? data['createdAt']);
+            if (date == null) return false;
+            if (_isDailyView) {
+              return date.year == _selectedDate.year &&
+                  date.month == _selectedDate.month &&
+                  date.day == _selectedDate.day;
+            } else {
+              return date.year == _selectedDate.year &&
+                  date.month == _selectedDate.month;
+            }
+          }).toList();
 
-          // 3. Main Content
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16), // Better top spacing
-                  // --- CUSTOM HEADER ---
-                  Row(
-                    children: [
-                      // Menu Icon
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.grid_view_rounded,
-                          size: 24,
-                          color: textDark,
-                        ),
-                      ),
+          double totalIncome = 0;
+          double totalExpense = 0;
 
-                      const SizedBox(width: 16),
+          for (final doc in filteredDocs) {
+            final data = doc.data()! as Map<String, dynamic>;
+            final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+            if (amount >= 0) {
+              totalIncome += amount;
+            } else {
+              totalExpense += amount.abs();
+            }
+          }
 
-                      // Title right beside menu
-                      Text(
-                        "SmartSpend",
-                        style: TextStyle(
-                          color: textDark,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
+          final remainingBalance = totalIncome - totalExpense;
 
-                      const Spacer(),
+          final todaysRecords = filteredDocs.where((d) {
+            final data = d.data()! as Map<String, dynamic>;
+            final date = _extractDate(data['date'] ?? data['createdAt']);
+            if (date == null) return false;
+            final now = DateTime.now();
+            return date.year == now.year &&
+                date.month == now.month &&
+                date.day == now.day;
+          }).toList();
 
-                      // Profile Icon
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: CircleAvatar(
-                          radius: 22,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: user?.photoURL != null
-                              ? NetworkImage(user!.photoURL!)
-                              : null,
-                          child: user?.photoURL == null
-                              ? Icon(Icons.person, color: primaryBlue)
-                              : null,
-                        ),
-                      ),
-                    ],
+          final emptyMessage = _isDailyView
+              ? "No transactions yet for ${DateFormat('MMM d, yyyy').format(_selectedDate)}."
+              : "No transactions yet for ${DateFormat('MMMM yyyy').format(_selectedDate)}.";
+
+          return Column(
+            children: [
+              // Header
+              Container(
+                decoration: const BoxDecoration(
+                  color: navy,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(22),
                   ),
-
-                  const SizedBox(height: 32),
-
-                  // --- Glassy "Visa" Card ---
-                  StreamBuilder<QuerySnapshot>(
-                    stream: _firestoreService.streamTransactions(
-                      uid: user!.uid,
+                ),
+                padding: const EdgeInsets.only(
+                  top: 40,
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _dateTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.dehaze, color: Colors.white),
+                          onPressed: _openViewModeBottomSheet,
+                        ),
+                      ],
                     ),
-                    builder: (context, snapshot) {
-                      double totalBalance = 0;
-                      if (snapshot.hasData) {
-                        double income = 0;
-                        double expense = 0;
-                        for (var doc in snapshot.data!.docs) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          final amt =
-                              (data['amount'] as num?)?.toDouble() ?? 0.0;
-                          if ((data['type'] ?? '').toString().toLowerCase() ==
-                              'income') {
-                            income += amt.abs();
-                          } else {
-                            expense += amt.abs();
-                          }
-                        }
-                        totalBalance = income - expense;
-                      }
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _summaryItem(
+                          label: 'EXPENSE',
+                          value: '-₱${totalExpense.toStringAsFixed(2)}',
+                          valueColor: Colors.redAccent,
+                        ),
+                        _summaryItem(
+                          label: 'INCOME',
+                          value: '+₱${totalIncome.toStringAsFixed(2)}',
+                          valueColor: Colors.greenAccent,
+                        ),
+                        _summaryItem(
+                          label: 'TOTAL',
+                          value: '₱${remainingBalance.toStringAsFixed(2)}',
+                          valueColor: remainingBalance >= 0
+                              ? Colors.white
+                              : Colors.redAccent,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Recent + Daily
+              Expanded(
+                child: filteredDocs.isEmpty
+                    ? Center(child: Text(emptyMessage))
+                    : ListView(
+                        controller: widget.scrollController,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        children: [
+                          ...filteredDocs.map((d) {
+                            final data = d.data()! as Map<String, dynamic>;
+                            final amount =
+                                (data['amount'] as num?)?.toDouble() ?? 0;
+                            final isExpense = amount < 0;
+                            final time =
+                                _extractDate(data['date'] ?? data['createdAt']) ??
+                                    DateTime.now();
 
                       return Container(
                         height: 220,
@@ -224,6 +264,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ],
                                   ),
+
+                                  const SizedBox(width: 8),
+
+                                  // MIDDLE: edit/delete (center aligned vertically)
                                   Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -236,32 +280,62 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 6),
-                                      Text(
-                                        "₱${totalBalance.toStringAsFixed(2)}",
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 36,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      _miniIconButton(
+                                        icon: Icons.delete,
+                                        color: Colors.redAccent,
+                                        onPressed: () async {
+                                          final confirm =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text(
+                                                'Delete Transaction?',
+                                              ),
+                                              content: const Text(
+                                                'This action cannot be undone.',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          ctx, false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          ctx, true),
+                                                  child: const Text(
+                                                    'Delete',
+                                                    style: TextStyle(
+                                                        color:
+                                                            Colors.redAccent),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            await FirebaseFirestore.instance
+                                                .collection('transactions')
+                                                .doc(d.id)
+                                                .delete();
+                                          }
+                                        },
                                       ),
                                     ],
                                   ),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        user?.displayName?.toUpperCase() ??
-                                            "CARD HOLDER",
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 1.2,
-                                        ),
-                                      ),
-                                      const Text(
-                                        "12/28",
+
+                                  const SizedBox(width: 8),
+
+                                  // RIGHT: amount (hard width + FittedBox => never overflows)
+                                  SizedBox(
+                                    width: 96, // clamp width to keep layout stable
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 12,
@@ -272,120 +346,129 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ],
                               ),
+                            );
+                          }),
+
+                          const SizedBox(height: 20),
+
+                          // Daily Records card
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // --- Activities Section ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Activities",
-                        style: TextStyle(
-                          color: textDark,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Icon(Icons.more_horiz, color: Colors.grey[400]),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildGlassActivityBtn(Icons.add, "Top Up", () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AddTransactionScreen(),
-                          ),
-                        );
-                      }),
-                      _buildGlassActivityBtn(
-                        Icons.swap_horiz,
-                        "Transfer",
-                        () {},
-                      ),
-                      _buildGlassActivityBtn(
-                        Icons.file_download_outlined,
-                        "Withdraw",
-                        () {},
-                      ),
-                      _buildGlassActivityBtn(
-                        Icons.shopping_bag_outlined,
-                        "Shop",
-                        () {},
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // 4. DRAGGABLE BOTTOM SHEET
-          DraggableScrollableSheet(
-            initialChildSize: 0.30,
-            minChildSize: 0.30,
-            maxChildSize: 0.9,
-            builder: (BuildContext context, ScrollController sheetController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: sheetColor, // Deep Navy Blue
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(36),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: sheetColor.withOpacity(0.5),
-                      blurRadius: 20,
-                      offset: const Offset(0, -5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // 🔽 UPDATED HANDLE: Now an Arrow Icon 🔽
-                    Center(
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 12),
-                        child: const Icon(
-                          Icons.keyboard_arrow_up_rounded,
-                          color: Colors.white54,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-
-                    // Header inside sheet
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28.0,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Transactions",
-                            style: TextStyle(
+                            decoration: BoxDecoration(
                               color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          ),
-                          Icon(
-                            Icons.calendar_today,
-                            color: Colors.white54,
-                            size: 20,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Today’s Records',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                if (todaysRecords.isEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.all(12.0),
+                                    child: Text(
+                                      'No records for today.',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ),
+                                ...todaysRecords.map((d) {
+                                  final data =
+                                      d.data()! as Map<String, dynamic>;
+                                  final amount = (data['amount'] as num?)
+                                          ?.toDouble() ??
+                                      0;
+                                  final isExpense = amount < 0;
+                                  return Container(
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 6,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[50],
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              isExpense
+                                                  ? Icons
+                                                      .remove_circle_outline
+                                                  : Icons.add_circle_outline,
+                                              color: isExpense
+                                                  ? Colors.redAccent
+                                                  : Colors.green,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  data['name'] ?? '',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  data['category'] ?? '',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    color: Colors.grey,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            '${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              color: isExpense
+                                                  ? Colors.redAccent
+                                                  : Colors.green,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -511,73 +594,105 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
 
-  Widget _buildDarkTransactionTile(Map<String, dynamic> data) {
-    final bool isExpense =
-        (data['type'] ?? 'expense').toString().toLowerCase() == 'expense';
-    final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-    final DateTime date =
-        (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+class _ViewModeSelection {
+  final bool isDaily;
+  final DateTime date;
 
-    IconData icon = Icons.category;
-    if (data['category'] == 'Food & Dining')
-      icon = Icons.restaurant;
-    else if (data['category'] == 'Transportation')
-      icon = Icons.directions_car;
-    else if (data['category'] == 'Salary')
-      icon = Icons.work;
-    else if (data['category'] == 'Entertainment')
-      icon = Icons.movie;
+  const _ViewModeSelection({
+    required this.isDaily,
+    required this.date,
+  });
+}
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Row(
+// EditTransactionSheet unchanged except UI later (we'll keep this simple for now)
+class EditTransactionSheet extends StatefulWidget {
+  final String docId;
+  final Map<String, dynamic> data;
+
+  const EditTransactionSheet({
+    super.key,
+    required this.docId,
+    required this.data,
+  });
+
+  @override
+  State<EditTransactionSheet> createState() => _EditTransactionSheetState();
+}
+
+class _EditTransactionSheetState extends State<EditTransactionSheet> {
+  late TextEditingController nameCtrl;
+  late TextEditingController categoryCtrl;
+  late TextEditingController amountCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    nameCtrl = TextEditingController(text: widget.data['name'] ?? '');
+    categoryCtrl = TextEditingController(text: widget.data['category'] ?? '');
+    amountCtrl = TextEditingController(text: widget.data['amount'].toString());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 16,
+        right: 16,
+        top: 24,
+      ),
+      child: Wrap(
         children: [
-          // Icon Box
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 16),
-
-          // Text
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['category'] ?? 'Unknown',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  DateFormat('MMM d • h:mm a').format(date),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
+          const Center(
+            child: Text(
+              'Edit Transaction',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
-
-          // Amount
-          Text(
-            "${isExpense ? '-' : '+'}₱${amount.abs().toStringAsFixed(2)}",
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
+          const SizedBox(height: 16),
+          TextField(
+            controller: nameCtrl,
+            decoration: const InputDecoration(labelText: 'Name'),
+          ),
+          TextField(
+            controller: categoryCtrl,
+            decoration: const InputDecoration(labelText: 'Category'),
+          ),
+          TextField(
+            controller: amountCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Amount (₱)',
+              prefixText: '₱',
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              minimumSize: const Size(double.infinity, 45),
+            ),
+            onPressed: () async {
+              final amount = double.tryParse(amountCtrl.text) ?? 0;
+              await FirebaseFirestore.instance
+                  .collection('transactions')
+                  .doc(widget.docId)
+                  .update({
+                'name': nameCtrl.text,
+                'category': categoryCtrl.text,
+                'amount': amount,
+              });
+              if (!mounted) return;
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'Save Changes',
+              style: TextStyle(color: Colors.white),
             ),
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );
