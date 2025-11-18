@@ -142,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.menu, color: Colors.white),
-                          onPressed: _openFilterSheet,
+                          onPressed: _openViewModeBottomSheet,
                         ),
                       ],
                     ),
@@ -851,17 +851,21 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
               minimumSize: const Size(double.infinity, 45),
             ),
             onPressed: () async {
-              final amount = double.tryParse(amountCtrl.text) ?? 0;
+              final amount = double.tryParse(amountCtrl.text) ?? 0; 
+
+          
+              final navigator = Navigator.of(context);
+
               await FirebaseFirestore.instance
-                  .collection('transactions')
+                  .collection('transactions') 
                   .doc(widget.docId)
                   .update({
                 'name': nameCtrl.text,
                 'category': categoryCtrl.text,
                 'amount': amount,
               });
-              if (!mounted) return;
-              Navigator.pop(context);
+
+              navigator.pop();
             },
             child: const Text(
               'Save Changes',
