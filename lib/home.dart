@@ -3,8 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
-enum ViewMode { daily, monthly }
-
 class HomeScreen extends StatefulWidget {
   final ScrollController? scrollController;
 
@@ -15,14 +13,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  ViewMode _viewMode = ViewMode.monthly;
-  late DateTime _selectedDate;
+  DateTime _selectedDate = DateTime.now();
+  bool _isDailyView = true;
+  List<QueryDocumentSnapshot> _latestDocs = [];
 
-  @override
-  void initState() {
-    super.initState();
-    final now = DateTime.now();
-    _selectedDate = DateTime(now.year, now.month, now.day);
+  String get _dateTitle {
+    if (_isDailyView) {
+      return DateFormat('MMM d, yyyy').format(_selectedDate);
+    } else {
+      return DateFormat('MMMM yyyy').format(_selectedDate);
+    }
   }
 
   @override
@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
             final data = doc.data()! as Map<String, dynamic>;
             final date = _extractDate(data['date'] ?? data['createdAt']);
             if (date == null) return false;
-            if (_viewMode == ViewMode.daily) {
+            if (_isDailyView) {
               return date.year == _selectedDate.year &&
                   date.month == _selectedDate.month &&
                   date.day == _selectedDate.day;
@@ -107,10 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 date.day == now.day;
           }).toList();
 
-          final monthYearLabel =
-              DateFormat('MMMM • yyyy').format(_selectedDate);
-          final dayLabel = DateFormat('MMM d, yyyy').format(_selectedDate);
-          final emptyMessage = _viewMode == ViewMode.daily
+          final emptyMessage = _isDailyView
               ? "No transactions yet for ${DateFormat('MMM d, yyyy').format(_selectedDate)}."
               : "No transactions yet for ${DateFormat('MMMM yyyy').format(_selectedDate)}.";
 
@@ -138,26 +135,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                monthYearLabel,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                dayLabel,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            _dateTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         IconButton(
@@ -501,25 +485,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _changeViewMode(ViewMode mode) {
-    if (_viewMode == mode) return;
-    setState(() {
-      _viewMode = mode;
-    });
-  }
-
   Future<void> _openViewModeBottomSheet() async {
-    final pickedDate = await showModalBottomSheet<DateTime>(
+    final selection = await showModalBottomSheet<_ViewModeSelection>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => ViewModeBottomSheet(initialDate: _selectedDate),
+      builder: (_) => ViewModeBottomSheet(
+        initialDate: _selectedDate,
+        isDailyView: _isDailyView,
+      ),
     );
 
-    if (pickedDate != null) {
-      final normalized =
-          DateTime(pickedDate.year, pickedDate.month, pickedDate.day);
+    if (selection != null) {
       setState(() {
-        _selectedDate = normalized;
+        _isDailyView = selection.isDaily;
+        _selectedDate = selection.date;
       });
     }
   }
@@ -581,8 +560,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class ViewModeBottomSheet extends StatefulWidget {
   final DateTime initialDate;
+  final bool isDailyView;
 
-  const ViewModeBottomSheet({super.key, required this.initialDate});
+  const ViewModeBottomSheet({
+    super.key,
+    required this.initialDate,
+    required this.isDailyView,
+  });
 
   @override
   State<ViewModeBottomSheet> createState() => _ViewModeBottomSheetState();
@@ -590,9 +574,7 @@ class ViewModeBottomSheet extends StatefulWidget {
 
 class _ViewModeBottomSheetState extends State<ViewModeBottomSheet> {
   late DateTime _tempDate;
-  ViewMode _currentMode = ViewMode.monthly;
-  _HomeScreenState? _homeState;
-  bool _modeInitialized = false;
+  late bool _isDailyMode;
 
   @override
   void initState() {
@@ -602,22 +584,12 @@ class _ViewModeBottomSheetState extends State<ViewModeBottomSheet> {
       widget.initialDate.month,
       widget.initialDate.day,
     );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _homeState ??= context.findAncestorStateOfType<_HomeScreenState>();
-    if (!_modeInitialized) {
-      _currentMode = _homeState?._viewMode ?? _currentMode;
-      _modeInitialized = true;
-    }
+    _isDailyMode = widget.isDailyView;
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDaily = _currentMode == ViewMode.daily;
-    final dateLabel = isDaily
+    final dateLabel = _isDailyMode
         ? DateFormat('MMM d, yyyy').format(_tempDate)
         : DateFormat('MMMM yyyy').format(_tempDate);
 
@@ -657,23 +629,23 @@ class _ViewModeBottomSheetState extends State<ViewModeBottomSheet> {
                 Expanded(
                   child: _ModeButton(
                     label: 'Daily',
-                    selected: _currentMode == ViewMode.daily,
-                    onTap: () => _selectMode(ViewMode.daily),
+                    selected: _isDailyMode,
+                    onTap: () => _selectMode(true),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _ModeButton(
                     label: 'Monthly',
-                    selected: _currentMode == ViewMode.monthly,
-                    onTap: () => _selectMode(ViewMode.monthly),
+                    selected: !_isDailyMode,
+                    onTap: () => _selectMode(false),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
             Text(
-              isDaily ? 'Selected Day' : 'Selected Month',
+              _isDailyMode ? 'Selected Day' : 'Selected Month',
               style: const TextStyle(
                 color: Colors.white70,
                 fontWeight: FontWeight.bold,
@@ -715,13 +687,18 @@ class _ViewModeBottomSheetState extends State<ViewModeBottomSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 onPressed: () {
-                  _homeState?._changeViewMode(_currentMode);
                   final normalized = DateTime(
                     _tempDate.year,
                     _tempDate.month,
                     _tempDate.day,
                   );
-                  Navigator.pop(context, normalized);
+                  Navigator.pop(
+                    context,
+                    _ViewModeSelection(
+                      isDaily: _isDailyMode,
+                      date: normalized,
+                    ),
+                  );
                 },
                 child: const Text('Apply'),
               ),
@@ -734,7 +711,7 @@ class _ViewModeBottomSheetState extends State<ViewModeBottomSheet> {
 
   void _changeDate(int delta) {
     setState(() {
-      if (_currentMode == ViewMode.daily) {
+      if (_isDailyMode) {
         _tempDate = _tempDate.add(Duration(days: delta));
       } else {
         final base = DateTime(_tempDate.year, _tempDate.month + delta, 1);
@@ -745,10 +722,10 @@ class _ViewModeBottomSheetState extends State<ViewModeBottomSheet> {
     });
   }
 
-  void _selectMode(ViewMode mode) {
-    if (_currentMode == mode) return;
+  void _selectMode(bool isDaily) {
+    if (_isDailyMode == isDaily) return;
     setState(() {
-      _currentMode = mode;
+      _isDailyMode = isDaily;
     });
   }
 }
@@ -798,6 +775,16 @@ class _ModeButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ViewModeSelection {
+  final bool isDaily;
+  final DateTime date;
+
+  const _ViewModeSelection({
+    required this.isDaily,
+    required this.date,
+  });
 }
 
 // EditTransactionSheet unchanged except UI later (we'll keep this simple for now)
