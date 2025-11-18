@@ -36,8 +36,7 @@ class MyApp extends StatelessWidget {
             const RegisterScreen(), // ✅ class RegisterScreen
         '/main_menu': (context) =>
             const MainMenuScreen(), // ✅ class MainMenuScreen
-         '/forgot_password': (context) => 
-            const ForgotPasswordScreen(),        
+        '/forgot_password': (context) => const ForgotPasswordScreen(),
       },
     );
   }

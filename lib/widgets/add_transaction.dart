@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-// ❗️ UPDATE THIS IMPORT to match your project name in pubspec.yaml
+// ❗️ UPDATE THIS IMPORT if your pubspec.yaml name is different
 import 'package:smartspend/services/firestore_service.dart';
 
 class AddTransactionScreen extends StatefulWidget {
@@ -15,11 +15,7 @@ class AddTransactionScreen extends StatefulWidget {
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _descController = TextEditingController();
 
-  // State variables
   String _categoryName = 'Food & Dining';
-  String _categoryId = '';
-  String _categoryIcon = 'restaurant';
-
   String _account = 'Cash';
   String _type = 'Expense';
   DateTime _selectedDate = DateTime.now();
@@ -72,6 +68,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       final double amount = double.parse(_amountText);
       final double finalAmount = _type == 'Expense' ? -amount : amount;
 
+      // Using the Firestore Service directly or raw collection
       await FirebaseFirestore.instance.collection('transactions').add({
         'userId': user!.uid,
         'uid': user!.uid,
@@ -108,7 +105,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF051C3F), // Dark Navy
+      backgroundColor: const Color(0xFF051C3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -154,7 +151,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   void _showCategorySheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF051C3F), // Dark Navy
+      backgroundColor: const Color(0xFF051C3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -199,8 +196,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           onTap: () {
                             setState(() {
                               _categoryName = data['name'];
-                              _categoryId = docs[index].id;
-                              _categoryIcon = data['icon'] ?? 'category';
                             });
                             Navigator.pop(context);
                           },
@@ -349,7 +344,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                       ),
 
-                      // Spacing to push amount down visually
                       const SizedBox(height: 20),
 
                       // --- Amount Display ---
@@ -404,8 +398,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                 ),
                 child: Column(
-                  mainAxisSize:
-                      MainAxisSize.min, // Important for column in layout
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

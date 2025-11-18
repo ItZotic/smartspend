@@ -4,9 +4,9 @@ import 'home.dart';
 import 'budget.dart';
 import 'analytics.dart';
 import 'accounts.dart';
-import 'settings.dart';
-import 'services/auth_service.dart';
-import 'add_transaction.dart'; // opens add transaction screen/modal
+import 'categories_screen.dart';
+import '../services/auth_service.dart'; // Check your path for auth service
+import 'add_transaction.dart';
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
@@ -26,11 +26,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   bool _fabVisible = true;
   final Map<ScrollController, VoidCallback> _controllerListeners = {};
 
-  // pages for bottom nav
   void _handleScroll(ScrollController controller) {
-    if (!controller.hasClients) {
-      return;
-    }
+    if (!controller.hasClients) return;
     final direction = controller.position.userScrollDirection;
     if (direction == ScrollDirection.reverse && _fabVisible) {
       setState(() => _fabVisible = false);
@@ -66,7 +63,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       BudgetScreen(scrollController: _budgetScrollController),
       AnalyticsScreen(scrollController: _analyticsScrollController),
       AccountsScreen(scrollController: _accountsScrollController),
-      const SettingsScreen(),
+      const CategoriesScreen(),
     ];
   }
 
@@ -84,43 +81,23 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      if (!_fabVisible) {
-        _fabVisible = true;
-      }
+      if (!_fabVisible) _fabVisible = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFF0D1B2A); // navy
-    const Color backgroundColor = Color(0xFFF5F6FA);
+    const Color primaryColor = Color(
+      0xFF2D79F6,
+    ); // Updated to match new blue theme
     const Color inactiveColor = Colors.grey;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        title: const Text(
-          'SmartSpend',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: primaryColor,
-        centerTitle: true,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await _authService.logout();
-              if (!context.mounted) {
-                return;
-              }
-              Navigator.pushReplacementNamed(context, '/');
-            },
-          ),
-        ],
-      ),
+      // 1. AppBar REMOVED here to fix the double title issue.
+      // Each screen now controls its own top area.
+      extendBody:
+          true, // Optional: Lets content go behind nav bar for a modern look
 
-      // Floating + opens add transaction as full-screen modal
       floatingActionButton: AnimatedSlide(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
@@ -130,14 +107,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           opacity: _fabVisible ? 1 : 0,
           child: FloatingActionButton(
             backgroundColor: primaryColor,
+            shape: const CircleBorder(), // Round FAB
             child: const Icon(Icons.add, color: Colors.white),
             onPressed: () {
-              // open full-screen add transaction page (modal route)
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const AddTransactionScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
               );
             },
           ),
@@ -154,27 +129,28 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         backgroundColor: Colors.white,
         selectedItemColor: primaryColor,
         unselectedItemColor: inactiveColor,
-        elevation: 8,
+        showUnselectedLabels: true,
+        elevation: 10,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
+            icon: Icon(Icons.home_rounded),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet_outlined),
+            icon: Icon(Icons.account_balance_wallet_rounded),
             label: 'Budget',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_outlined),
-            label: 'Analytics',
+            icon: Icon(Icons.bar_chart_rounded),
+            label: 'Analysis',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle_outlined),
+            icon: Icon(Icons.account_balance_rounded),
             label: 'Accounts',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
+            icon: Icon(Icons.category_rounded),
+            label: 'Categories',
           ),
         ],
       ),

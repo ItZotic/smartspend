@@ -35,7 +35,7 @@ class FirestoreService {
       'name': trimmedName,
       'type': type,
       'owner': uid,
-      'icon': '',
+      'icon': '', // Default icon
     });
 
     return doc.id;
@@ -49,7 +49,7 @@ class FirestoreService {
         .collection('categories')
         .where('owner', isEqualTo: uid)
         .where('type', isEqualTo: type)
-        .orderBy('name')
+        // .orderBy('name') // This line is commented out to fix the read error
         .snapshots();
   }
 
@@ -86,7 +86,10 @@ class FirestoreService {
         .where('uid', isEqualTo: uid);
 
     if (start != null) {
-      query = query.where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start));
+      query = query.where(
+        'date',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+      );
     }
 
     if (end != null) {
@@ -96,5 +99,50 @@ class FirestoreService {
     query = query.orderBy('date', descending: true);
 
     return query.snapshots();
+  }
+
+  Future<void> setBudget({
+    required String uid,
+    required String categoryId,
+    required String categoryName,
+    required double limit,
+    required DateTime month,
+  }) async {
+    final monthString =
+        "${month.year}-${month.month.toString().padLeft(2, '0')}";
+    final budgetDocId = "${uid}_${categoryId}_$monthString";
+
+    final docRef = _firestore.collection('budgets').doc(budgetDocId);
+
+    await docRef.set({
+      'uid': uid,
+      'categoryId': categoryId,
+      'categoryName': categoryName,
+      'limit': limit,
+      'month': monthString,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  // 🔽 --- THIS FUNCTION IS NOW FIXED --- 🔽
+  Future<void> addCategory({
+    required String uid,
+    required String name,
+    required String type,
+    required String iconString,
+  }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError('Category name cannot be empty');
+    }
+
+    // The complex query that was failing has been removed.
+    // We now add the category directly to fix the PERMISSION_DENIED error.
+    await _firestore.collection('categories').add({
+      'name': trimmedName,
+      'type': type,
+      'owner': uid,
+      'icon': iconString,
+    });
   }
 }
