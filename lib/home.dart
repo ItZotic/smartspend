@@ -41,6 +41,22 @@ class _HomeScreenState extends State<HomeScreen> {
         .snapshots();
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: navy,
+        elevation: 0,
+        title: const Text('SmartSpend'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: TransactionSearchDelegate(_latestDocs),
+              );
+            },
+          ),
+        ],
+      ),
       resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF5F6FA),
       body: StreamBuilder<QuerySnapshot>(
@@ -51,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           final allDocs = snapshot.data?.docs ?? [];
+          _latestDocs = allDocs;
           final filteredDocs = allDocs.where((doc) {
             final data = doc.data()! as Map<String, dynamic>;
             final date = _extractDate(data['date'] ?? data['createdAt']);
@@ -117,30 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'SmartSpend',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            showSearch(
-                              context: context,
-                              delegate: TransactionSearchDelegate(allDocs),
-                            );
-                          },
-                          icon:
-                              const Icon(Icons.search, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
