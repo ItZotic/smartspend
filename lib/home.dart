@@ -19,8 +19,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String get _dateTitle {
     if (_isDailyView) {
+      // DAILY: full date
       return DateFormat('MMM d, yyyy').format(_selectedDate);
     } else {
+      // MONTHLY: only month + year
       return DateFormat('MMMM yyyy').format(_selectedDate);
     }
   }
@@ -45,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: navy,
         elevation: 0,
         title: const Text('SmartSpend'),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -68,10 +71,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
           final allDocs = snapshot.data?.docs ?? [];
           _latestDocs = allDocs;
+
           final filteredDocs = allDocs.where((doc) {
             final data = doc.data()! as Map<String, dynamic>;
             final date = _extractDate(data['date'] ?? data['createdAt']);
             if (date == null) return false;
+
             if (_isDailyView) {
               return date.year == _selectedDate.year &&
                   date.month == _selectedDate.month &&
@@ -113,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           return Column(
             children: [
-              // Header
+              // HEADER (dark card)
               Container(
                 decoration: const BoxDecoration(
                   color: navy,
@@ -122,21 +127,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 padding: const EdgeInsets.symmetric(
-                  vertical: 10,
+                  vertical: 8, // slightly smaller height
                   horizontal: 16,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Centered date + menu/filter button
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            _dateTitle,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
+                          child: Center(
+                            child: Text(
+                              _dateTitle,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),
@@ -146,6 +155,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 6),
+                    // Summary row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -174,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              // Recent + Daily
+              // LIST + TODAY'S RECORDS
               Expanded(
                 child: filteredDocs.isEmpty
                     ? Center(child: Text(emptyMessage))
@@ -260,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                   const SizedBox(width: 8),
 
-                                  // MIDDLE: edit/delete (center aligned vertically)
+                                  // MIDDLE: edit/delete
                                   Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -283,53 +294,53 @@ class _HomeScreenState extends State<HomeScreen> {
                                         icon: Icons.delete,
                                         color: Colors.redAccent,
                                         onPressed: () async {
-                                          final confirm =
-                                              await showDialog<bool>(
-                                            context: context,
-                                            builder: (ctx) => AlertDialog(
-                                              title: const Text(
-                                                'Delete Transaction?',
-                                              ),
-                                              content: const Text(
-                                                'This action cannot be undone.',
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(
-                                                          ctx, false),
-                                                  child: const Text('Cancel'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(
-                                                          ctx, true),
-                                                  child: const Text(
-                                                    'Delete',
-                                                    style: TextStyle(
-                                                        color:
-                                                            Colors.redAccent),
-                                                  ),
-                                                ),
-                                              ],
+                                        final confirm =
+                                            await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text(
+                                              'Delete Transaction?',
                                             ),
-                                          );
-                                          if (confirm == true) {
-                                            await FirebaseFirestore.instance
-                                                .collection('transactions')
-                                                .doc(d.id)
-                                                .delete();
-                                          }
-                                        },
+                                            content: const Text(
+                                              'This action cannot be undone.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(
+                                                        ctx, false),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(
+                                                        ctx, true),
+                                                child: const Text(
+                                                  'Delete',
+                                                  style: TextStyle(
+                                                      color:
+                                                          Colors.redAccent),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm == true) {
+                                          await FirebaseFirestore.instance
+                                              .collection('transactions')
+                                              .doc(d.id)
+                                              .delete();
+                                        }
+                                      },
                                       ),
                                     ],
                                   ),
 
                                   const SizedBox(width: 8),
 
-                                  // RIGHT: amount (hard width + FittedBox => never overflows)
+                                  // RIGHT: amount
                                   SizedBox(
-                                    width: 96, // clamp width to keep layout stable
+                                    width: 96,
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
                                       alignment: Alignment.centerRight,
@@ -351,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           const SizedBox(height: 20),
 
-                          // Daily Records card
+                          // DAILY RECORDS CARD
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(
@@ -782,7 +793,7 @@ class _ViewModeSelection {
   });
 }
 
-// EditTransactionSheet unchanged except UI later (we'll keep this simple for now)
+// EditTransactionSheet
 class EditTransactionSheet extends StatefulWidget {
   final String docId;
   final Map<String, dynamic> data;
@@ -851,13 +862,11 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
               minimumSize: const Size(double.infinity, 45),
             ),
             onPressed: () async {
-              final amount = double.tryParse(amountCtrl.text) ?? 0; 
-
-          
+              final amount = double.tryParse(amountCtrl.text) ?? 0;
               final navigator = Navigator.of(context);
 
               await FirebaseFirestore.instance
-                  .collection('transactions') 
+                  .collection('transactions')
                   .doc(widget.docId)
                   .update({
                 'name': nameCtrl.text,
