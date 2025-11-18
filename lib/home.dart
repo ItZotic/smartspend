@@ -17,7 +17,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   ViewMode _viewMode = ViewMode.monthly;
   late DateTime _selectedDate;
-  List<QueryDocumentSnapshot> _latestDocs = [];
 
   @override
   void initState() {
