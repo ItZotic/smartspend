@@ -43,10 +43,12 @@ class _HomeScreenState extends State<HomeScreen> {
         .snapshots();
 
     return Scaffold(
-      appBar: AppBar(
+       appBar: AppBar(
         backgroundColor: navy,
         elevation: 0,
         centerTitle: true,
+        automaticallyImplyLeading: false,
+        toolbarHeight: 48,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
