@@ -46,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: navy,
         elevation: 0,
-        title: const Text('SmartSpend'),
         centerTitle: true,
         actions: [
           IconButton(
