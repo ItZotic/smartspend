@@ -121,18 +121,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     bottom: Radius.circular(22),
                   ),
                 ),
-                padding: const EdgeInsets.only(
-                  top: 40,
-                  bottom: 16,
-                  left: 16,
-                  right: 16,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 16,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Text(
@@ -145,12 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.dehaze, color: Colors.white),
-                          onPressed: _openViewModeBottomSheet,
+                          icon: const Icon(Icons.menu, color: Colors.white),
+                          onPressed: _openFilterSheet,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
