@@ -16,17 +16,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   ViewMode _viewMode = ViewMode.monthly;
-  late int _selectedMonth;
-  late int _selectedYear;
-  late DateTime _selectedDay;
+  late DateTime _selectedDate;
+  List<QueryDocumentSnapshot> _latestDocs = [];
 
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _selectedMonth = now.month;
-    _selectedYear = now.year;
-    _selectedDay = DateTime(now.year, now.month, now.day);
+    _selectedDate = DateTime(now.year, now.month, now.day);
   }
 
   @override
@@ -45,6 +42,22 @@ class _HomeScreenState extends State<HomeScreen> {
         .snapshots();
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: navy,
+        elevation: 0,
+        title: const Text('SmartSpend'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: TransactionSearchDelegate(_latestDocs),
+              );
+            },
+          ),
+        ],
+      ),
       resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF5F6FA),
       body: StreamBuilder<QuerySnapshot>(
@@ -55,17 +68,18 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           final allDocs = snapshot.data?.docs ?? [];
+          _latestDocs = allDocs;
           final filteredDocs = allDocs.where((doc) {
             final data = doc.data()! as Map<String, dynamic>;
             final date = _extractDate(data['date'] ?? data['createdAt']);
             if (date == null) return false;
             if (_viewMode == ViewMode.daily) {
-              return date.year == _selectedDay.year &&
-                  date.month == _selectedDay.month &&
-                  date.day == _selectedDay.day;
+              return date.year == _selectedDate.year &&
+                  date.month == _selectedDate.month &&
+                  date.day == _selectedDate.day;
             } else {
-              return date.year == _selectedYear &&
-                  date.month == _selectedMonth;
+              return date.year == _selectedDate.year &&
+                  date.month == _selectedDate.month;
             }
           }).toList();
 
@@ -94,6 +108,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 date.day == now.day;
           }).toList();
 
+          final monthYearLabel =
+              DateFormat('MMMM • yyyy').format(_selectedDate);
+          final dayLabel = DateFormat('MMM d, yyyy').format(_selectedDate);
+          final emptyMessage = _viewMode == ViewMode.daily
+              ? "No transactions yet for ${DateFormat('MMM d, yyyy').format(_selectedDate)}."
+              : "No transactions yet for ${DateFormat('MMMM yyyy').format(_selectedDate)}.";
+
           return Column(
             children: [
               // Header
@@ -117,45 +138,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'SmartSpend',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            showSearch(
-                              context: context,
-                              delegate: TransactionSearchDelegate(allDocs),
-                            );
-                          },
-                          icon:
-                              const Icon(Icons.search, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
                         Expanded(
-                          child: Center(
-                            child: Text(
-                              '${_monthName(_selectedMonth)}  •  $_selectedYear',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                monthYearLabel,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 4),
+                              Text(
+                                dayLabel,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.dehaze, color: Colors.white),
-                          onPressed: () => _showDisplayOptionsSheet(context),
+                          onPressed: _openViewModeBottomSheet,
                         ),
                       ],
                     ),
@@ -191,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Recent + Daily
               Expanded(
                 child: filteredDocs.isEmpty
-                    ? const Center(child: Text('No transactions yet.'))
+                    ? Center(child: Text(emptyMessage))
                     : ListView(
                         controller: widget.scrollController,
                         padding: const EdgeInsets.symmetric(
@@ -494,175 +502,27 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _changeMonth(int delta) {
-    setState(() {
-      final updated = DateTime(_selectedYear, _selectedMonth + delta, 1);
-      _selectedMonth = updated.month;
-      _selectedYear = updated.year;
-      _syncSelectedDayWithMonth();
-    });
-  }
-
-  void _changeDay(int delta) {
-    setState(() {
-      _selectedDay = _selectedDay.add(Duration(days: delta));
-      _selectedMonth = _selectedDay.month;
-      _selectedYear = _selectedDay.year;
-    });
-  }
-
   void _changeViewMode(ViewMode mode) {
     if (_viewMode == mode) return;
     setState(() {
       _viewMode = mode;
-      if (mode == ViewMode.monthly) {
-        _selectedMonth = _selectedDay.month;
-        _selectedYear = _selectedDay.year;
-      } else {
-        _syncSelectedDayWithMonth();
-      }
     });
   }
 
-  void _syncSelectedDayWithMonth() {
-    var day = _selectedDay.day;
-    final maxDay = DateUtils.getDaysInMonth(_selectedYear, _selectedMonth);
-    if (day > maxDay) day = maxDay;
-    if (day < 1) day = 1;
-    _selectedDay = DateTime(_selectedYear, _selectedMonth, day);
-  }
-
-  void _showDisplayOptionsSheet(BuildContext context) {
-    showModalBottomSheet(
+  Future<void> _openViewModeBottomSheet() async {
+    final pickedDate = await showModalBottomSheet<DateTime>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.white24,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'View Mode',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _viewModeButton(
-                            label: 'Daily',
-                            selected: _viewMode == ViewMode.daily,
-                            onTap: () {
-                              _changeViewMode(ViewMode.daily);
-                              setModalState(() {});
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _viewModeButton(
-                            label: 'Monthly',
-                            selected: _viewMode == ViewMode.monthly,
-                            onTap: () {
-                              _changeViewMode(ViewMode.monthly);
-                              setModalState(() {});
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      _viewMode == ViewMode.daily
-                          ? 'Selected Day'
-                          : 'Selected Month',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            if (_viewMode == ViewMode.daily) {
-                              _changeDay(-1);
-                            } else {
-                              _changeMonth(-1);
-                            }
-                            setModalState(() {});
-                          },
-                          icon: const Icon(Icons.chevron_left,
-                              color: Colors.white),
-                        ),
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              _viewMode == ViewMode.daily
-                                  ? DateFormat('MMM d, yyyy')
-                                      .format(_selectedDay)
-                                  : '${_monthName(_selectedMonth)} $_selectedYear',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            if (_viewMode == ViewMode.daily) {
-                              _changeDay(1);
-                            } else {
-                              _changeMonth(1);
-                            }
-                            setModalState(() {});
-                          },
-                          icon: const Icon(Icons.chevron_right,
-                              color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => ViewModeBottomSheet(initialDate: _selectedDate),
     );
-  }
 
-  String _monthName(int month) {
-    return DateFormat.MMMM().format(DateTime(0, month));
+    if (pickedDate != null) {
+      final normalized =
+          DateTime(pickedDate.year, pickedDate.month, pickedDate.day);
+      setState(() {
+        _selectedDate = normalized;
+      });
+    }
   }
 
   DateTime? _extractDate(dynamic raw) {
@@ -718,12 +578,195 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+}
 
-  Widget _viewModeButton({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
+class ViewModeBottomSheet extends StatefulWidget {
+  final DateTime initialDate;
+
+  const ViewModeBottomSheet({super.key, required this.initialDate});
+
+  @override
+  State<ViewModeBottomSheet> createState() => _ViewModeBottomSheetState();
+}
+
+class _ViewModeBottomSheetState extends State<ViewModeBottomSheet> {
+  late DateTime _tempDate;
+  ViewMode _currentMode = ViewMode.monthly;
+  _HomeScreenState? _homeState;
+  bool _modeInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tempDate = DateTime(
+      widget.initialDate.year,
+      widget.initialDate.month,
+      widget.initialDate.day,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _homeState ??= context.findAncestorStateOfType<_HomeScreenState>();
+    if (!_modeInitialized) {
+      _currentMode = _homeState?._viewMode ?? _currentMode;
+      _modeInitialized = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDaily = _currentMode == ViewMode.daily;
+    final dateLabel = isDaily
+        ? DateFormat('MMM d, yyyy').format(_tempDate)
+        : DateFormat('MMMM yyyy').format(_tempDate);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'View Mode',
+              style: TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _ModeButton(
+                    label: 'Daily',
+                    selected: _currentMode == ViewMode.daily,
+                    onTap: () => _selectMode(ViewMode.daily),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _ModeButton(
+                    label: 'Monthly',
+                    selected: _currentMode == ViewMode.monthly,
+                    onTap: () => _selectMode(ViewMode.monthly),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              isDaily ? 'Selected Day' : 'Selected Month',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => _changeDate(-1),
+                  icon: const Icon(Icons.chevron_left, color: Colors.white),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      dateLabel,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _changeDate(1),
+                  icon: const Icon(Icons.chevron_right, color: Colors.white),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white24,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: () {
+                  _homeState?._changeViewMode(_currentMode);
+                  final normalized = DateTime(
+                    _tempDate.year,
+                    _tempDate.month,
+                    _tempDate.day,
+                  );
+                  Navigator.pop(context, normalized);
+                },
+                child: const Text('Apply'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeDate(int delta) {
+    setState(() {
+      if (_currentMode == ViewMode.daily) {
+        _tempDate = _tempDate.add(Duration(days: delta));
+      } else {
+        final base = DateTime(_tempDate.year, _tempDate.month + delta, 1);
+        final maxDay = DateUtils.getDaysInMonth(base.year, base.month);
+        final newDay = _tempDate.day > maxDay ? maxDay : _tempDate.day;
+        _tempDate = DateTime(base.year, base.month, newDay);
+      }
+    });
+  }
+
+  void _selectMode(ViewMode mode) {
+    if (_currentMode == mode) return;
+    setState(() {
+      _currentMode = mode;
+    });
+  }
+}
+
+class _ModeButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ModeButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
