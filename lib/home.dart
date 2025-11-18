@@ -131,14 +131,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Center(
-                            child: Text(
-                              _dateTitle,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          child: Text(
+                            _dateTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -482,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _openFilterSheet() async {
+  Future<void> _openViewModeBottomSheet() async {
     final selection = await showModalBottomSheet<_ViewModeSelection>(
       context: context,
       backgroundColor: Colors.transparent,
