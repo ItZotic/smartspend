@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:smartspend/screens/category_details_screen.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 
@@ -21,6 +22,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   final User? _user = FirebaseAuth.instance.currentUser;
   DateTime _selectedMonth =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+  DateTime get _monthStart =>
+      DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+
+  DateTime get _nextMonthStart =>
+      DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
 
   void _changeMonth(int offset) {
     setState(() {
@@ -43,22 +50,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   bool _isInSelectedMonth(Map<String, dynamic> data) {
     final date = _extractDate(data);
     if (date == null) return false;
-    return date.year == _selectedMonth.year && date.month == _selectedMonth.month;
+    return !date.isBefore(_monthStart) && date.isBefore(_nextMonthStart);
   }
+
+  String _formatCurrency(double value) => _themeService.formatCurrency(value);
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _themeService,
       builder: (context, _) {
-        if (_user == null) {
-          return const Scaffold(
-            body: Center(
-              child: Text('Please log in to view analytics.'),
-            ),
-          );
-        }
-
         return Scaffold(
           body: Container(
             decoration: BoxDecoration(
@@ -70,6 +71,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
             child: SafeArea(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -85,99 +87,107 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ),
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: _buildMonthSelector(),
+                  ),
+                  const SizedBox(height: 8),
                   Expanded(
-                    child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream:
-                          _firestoreService.streamTransactions(uid: _user!.uid),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(
-                            child: CircularProgressIndicator(
-                              color: _themeService.primaryBlue,
+                    child: _user == null
+                        ? Center(
+                            child: Text(
+                              'Please log in to view analytics.',
+                              style: TextStyle(color: _themeService.textSub),
                             ),
-                          );
-                        }
+                          )
+                        : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                            stream: _firestoreService
+                                .streamTransactions(uid: _user!.uid),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    color: _themeService.primaryBlue,
+                                  ),
+                                );
+                              }
 
-                        final transactions = snapshot.data?.docs ?? [];
-                        final monthTransactions = transactions
-                            .where((doc) => _isInSelectedMonth(doc.data()))
-                            .toList();
+                              final transactions = snapshot.data?.docs ?? [];
+                              final monthTransactions = transactions
+                                  .where((doc) => _isInSelectedMonth(doc.data()))
+                                  .toList();
 
-                        if (monthTransactions.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.bar_chart_rounded,
-                                  size: 80,
-                                  color: _themeService.primaryBlue
-                                      .withValues(alpha: 0.5),
+                              double income = 0;
+                              double expenses = 0;
+                              final Map<String, double> expenseByCategory = {};
+
+                              for (final doc in monthTransactions) {
+                                final data = doc.data();
+                                final double amount =
+                                    (data['amount'] as num?)?.toDouble() ?? 0;
+                                final String category =
+                                    (data['category'] as String?)
+                                                ?.trim()
+                                                .isNotEmpty ==
+                                            true
+                                        ? (data['category'] as String).trim()
+                                        : 'Uncategorized';
+                                final type =
+                                    (data['type'] as String?)?.toLowerCase();
+
+                                final isExpense =
+                                    type == 'expense' || amount < 0;
+                                final isIncome =
+                                    type == 'income' || (amount >= 0 && !isExpense);
+
+                                if (isIncome) {
+                                  income += amount.abs();
+                                }
+
+                                if (isExpense) {
+                                  final expenseValue = amount.abs();
+                                  expenses += expenseValue;
+                                  expenseByCategory[category] =
+                                      (expenseByCategory[category] ?? 0) +
+                                          expenseValue;
+                                }
+                              }
+
+                              final double netTotal = income - expenses;
+
+                              final bodyChildren = <Widget>[
+                                _buildSummaryCards(
+                                  income: income,
+                                  expenses: expenses,
+                                  total: netTotal,
                                 ),
                                 const SizedBox(height: 16),
-                                Text(
-                                  "No analytics data yet",
-                                  style: TextStyle(
-                                    color: _themeService.textSub,
-                                    fontSize: 16,
-                                  ),
+                                _buildDonutChart(
+                                  categoryTotals: expenseByCategory,
+                                  total: expenses,
                                 ),
-                              ],
-                            ),
-                          );
-                        }
+                                const SizedBox(height: 16),
+                                _buildCategoryList(
+                                  categoryTotals: expenseByCategory,
+                                  totalExpenses: expenses,
+                                ),
+                              ];
 
-                        double income = 0;
-                        double expenses = 0;
-                        double totalMagnitude = 0;
-                        final Map<String, double> categoryTotals = {};
-
-                        for (final doc in monthTransactions) {
-                          final data = doc.data();
-                          final double amount =
-                              (data['amount'] as num?)?.toDouble() ?? 0;
-                          final String category =
-                              (data['category'] as String?)?.trim().isNotEmpty == true
-                                  ? (data['category'] as String).trim()
-                                  : 'Uncategorized';
-
-                          if (amount >= 0) {
-                            income += amount;
-                          } else {
-                            expenses += amount.abs();
-                          }
-
-                          final value = amount.abs();
-                          totalMagnitude += value;
-                          categoryTotals[category] =
-                              (categoryTotals[category] ?? 0) + value;
-                        }
-
-                        final double netTotal = income - expenses;
-
-                        return ListView(
-                          controller: widget.scrollController,
-                          padding: const EdgeInsets.all(16),
-                          children: [
-                            _buildMonthSelector(),
-                            const SizedBox(height: 16),
-                            _buildSummaryCards(
-                              income: income,
-                              expenses: expenses,
-                              total: netTotal,
-                            ),
-                            const SizedBox(height: 20),
-                            _buildDonutChart(
-                              categoryTotals: categoryTotals,
-                              total: totalMagnitude,
-                            ),
-                            const SizedBox(height: 20),
-                            _buildCategoryList(categoryTotals: categoryTotals),
-                            const SizedBox(height: 80),
-                          ],
-                        );
-                      },
-                    ),
+                              return SingleChildScrollView(
+                                controller: widget.scrollController,
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: monthTransactions.isEmpty
+                                      ? [
+                                          _buildEmptyState(),
+                                        ]
+                                      : bodyChildren,
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
@@ -230,8 +240,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }) {
     final cardColor = _themeService.cardBg;
     final textColor = _themeService.textMain;
-
-    Widget buildCard(String title, double value, Color accent) {
+    Widget buildCard(String title, double value, Color accent, IconData icon) {
       final isNegative = value < 0;
       return Expanded(
         child: Container(
@@ -251,17 +260,30 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: accent, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
               Text(
-                NumberFormat.currency(symbol: '₱').format(value),
+                _formatCurrency(value),
                 style: TextStyle(
                   color: isNegative ? Colors.redAccent : accent,
                   fontSize: 18,
@@ -284,12 +306,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     return Row(
       children: [
-        buildCard('Income', income, Colors.greenAccent.shade400),
-        buildCard('Expenses', -expenses, Colors.redAccent),
-        buildCard('Total', total, _themeService.primaryBlue),
+        buildCard('Income', income, Colors.greenAccent.shade400, Icons.trending_up),
+        buildCard('Expenses', -expenses, Colors.redAccent, Icons.trending_down),
+        buildCard('Total', total, total >= 0 ? _themeService.primaryBlue : Colors.redAccent,
+            Icons.account_balance_wallet_rounded),
       ],
     );
   }
+
+  List<Color> get _chartColors => [
+        _themeService.primaryBlue,
+        Colors.tealAccent.shade700,
+        Colors.orangeAccent,
+        Colors.pinkAccent,
+        Colors.amber.shade700,
+        Colors.deepPurpleAccent,
+        Colors.greenAccent.shade400,
+        Colors.cyanAccent.shade400,
+        Colors.indigoAccent,
+        Colors.lightGreenAccent.shade700,
+      ];
 
   Widget _buildDonutChart({
     required Map<String, double> categoryTotals,
@@ -297,17 +333,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }) {
     final cardColor = _themeService.cardBg;
     final textColor = _themeService.textMain;
-    final List<Color> palette = [
-      _themeService.primaryBlue,
-      Colors.tealAccent.shade700,
-      Colors.orangeAccent,
-      Colors.pinkAccent,
-      Colors.amber.shade700,
-      Colors.deepPurpleAccent,
-      Colors.greenAccent.shade400,
-      Colors.cyanAccent.shade400,
-    ];
-
+    final palette = _chartColors;
     final sections = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -327,34 +353,85 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Spending Breakdown",
-            style: TextStyle(
-              color: textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                "Spending Breakdown",
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _themeService.primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Text(
+                  'Expenses only',
+                  style: TextStyle(
+                    color: _themeService.primaryBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 200,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: 60,
-                startDegreeOffset: -90,
-                sections: [
-                  for (int i = 0; i < sections.length; i++)
-                    PieChartSectionData(
-                      value: sections[i].value,
-                      color: palette[i % palette.length],
-                      radius: 60,
-                      title: '',
-                    ),
-                ],
+          if (total <= 0)
+            SizedBox(
+              height: 200,
+              child: Center(
+                child: Text(
+                  'No expenses recorded for this month',
+                  style: TextStyle(color: _themeService.textSub),
+                ),
               ),
+            )
+          else
+            Column(
+              children: [
+                SizedBox(
+                  height: 220,
+                  child: PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      startDegreeOffset: -90,
+                      sections: [
+                        for (int i = 0; i < sections.length; i++)
+                          PieChartSectionData(
+                            value: sections[i].value,
+                            color: palette[i % palette.length],
+                            radius: 70,
+                            title: total == 0
+                                ? ''
+                                : '${(sections[i].value / total * 100).toStringAsFixed(0)}%',
+                            titleStyle: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                      centerSpaceColor: cardColor,
+                      centerSpaceRadius: 70,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Total expenses: ${_formatCurrency(total)}",
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
-          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 12,
@@ -413,11 +490,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildCategoryList({
     required Map<String, double> categoryTotals,
+    required double totalExpenses,
   }) {
     final entries = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final total = entries.fold<double>(0, (sum, item) => sum + item.value);
     final textColor = _themeService.textMain;
+    final palette = _chartColors;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -444,78 +522,140 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          for (final entry in entries)
+          if (entries.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _themeService.primaryBlue.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.category_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.key,
-                          style: TextStyle(
-                            color: textColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: total == 0 ? 0 : entry.value / total,
-                            backgroundColor: _themeService.textSub.withValues(alpha: 0.1),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              _themeService.primaryBlue,
-                            ),
-                            minHeight: 6,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'No expenses recorded for this month',
+                style: TextStyle(color: _themeService.textSub),
+              ),
+            )
+          else
+            for (int i = 0; i < entries.length; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _openCategoryDetails(entries[i].key),
+                  child: Row(
                     children: [
-                      Text(
-                        NumberFormat.currency(symbol: '₱')
-                            .format(entry.value),
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.w700,
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: palette[i % palette.length].withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.category_rounded,
+                          color: palette[i % palette.length],
+                          size: 20,
                         ),
                       ),
-                      Text(
-                        total == 0
-                            ? '0%'
-                            : '${(entry.value / total * 100).toStringAsFixed(1)}%',
-                        style: TextStyle(
-                          color: _themeService.textSub,
-                          fontSize: 12,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              entries[i].key,
+                              style: TextStyle(
+                                color: textColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: totalExpenses == 0
+                                    ? 0
+                                    : entries[i].value / totalExpenses,
+                                backgroundColor:
+                                    _themeService.textSub.withValues(alpha: 0.1),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  palette[i % palette.length],
+                                ),
+                                minHeight: 6,
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            _formatCurrency(entries[i].value),
+                            style: TextStyle(
+                              color: textColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            totalExpenses == 0
+                                ? '0%'
+                                : '${(entries[i].value / totalExpenses * 100).toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              color: _themeService.textSub,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 60),
+      decoration: BoxDecoration(
+        color: _themeService.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.bar_chart_rounded,
+            size: 72,
+            color: _themeService.primaryBlue.withValues(alpha: 0.35),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "No analytics data yet",
+            style: TextStyle(
+              color: _themeService.textSub,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openCategoryDetails(String category) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CategoryDetailsScreen(
+          categoryName: category,
+          selectedMonth: _selectedMonth,
+        ),
       ),
     );
   }

@@ -25,11 +25,12 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final User? _user = FirebaseAuth.instance.currentUser;
 
-  DateTime get _startOfMonth =>
-      DateTime(widget.selectedMonth.year, widget.selectedMonth.month, 1);
+  DateTime get _monthStart => DateTime(widget.selectedMonth.year, widget.selectedMonth.month, 1);
 
-  DateTime get _startOfNextMonth =>
+  DateTime get _nextMonthStart =>
       DateTime(widget.selectedMonth.year, widget.selectedMonth.month + 1, 1);
+
+  String get _monthLabel => DateFormat.yMMMM().format(widget.selectedMonth);
 
   DateTime? _extractDate(Map<String, dynamic> data) {
     final createdAt = data['createdAt'];
@@ -43,6 +44,14 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
     return null;
   }
 
+  bool _isInSelectedMonth(Map<String, dynamic> data) {
+    final date = _extractDate(data);
+    if (date == null) return false;
+    return !date.isBefore(_monthStart) && date.isBefore(_nextMonthStart);
+  }
+
+  String _formatCurrency(double value) => _themeService.formatCurrency(value);
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -51,7 +60,6 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
         return Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
             elevation: 0,
             iconTheme: IconThemeData(color: _themeService.textMain),
             title: Column(
@@ -62,10 +70,12 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                   style: TextStyle(
                     color: _themeService.textMain,
                     fontWeight: FontWeight.w700,
+                    fontSize: 18,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  'Time selected: ${DateFormat.yMMMM().format(widget.selectedMonth)}',
+                  'Time selected: $_monthLabel',
                   style: TextStyle(
                     color: _themeService.textSub,
                     fontSize: 12,
@@ -73,6 +83,7 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                 ),
               ],
             ),
+            centerTitle: false,
           ),
           body: Container(
             decoration: BoxDecoration(
@@ -86,8 +97,8 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
               child: _user == null
                   ? Center(
                       child: Text(
-                        'Please log in to view this category.',
-                        style: TextStyle(color: _themeService.textMain),
+                        'Please log in to view category details.',
+                        style: TextStyle(color: _themeService.textSub),
                       ),
                     )
                   : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -101,103 +112,54 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                           );
                         }
 
-                        final docs = snapshot.data?.docs ?? [];
-                        final monthTransactions = docs.where((doc) {
-                          final data = doc.data();
-                          final date = _extractDate(data);
-                          final category =
-                              (data['category'] as String?)?.trim().toLowerCase() ?? '';
-                          return date != null &&
-                              !date.isBefore(_startOfMonth) &&
-                              date.isBefore(_startOfNextMonth) &&
-                              category == widget.categoryName.toLowerCase();
-                        }).toList();
+                        final transactions = snapshot.data?.docs ?? [];
+                        final monthTransactions = transactions
+                            .where((doc) => _isInSelectedMonth(doc.data()))
+                            .toList();
 
-                        final totalExpenses = docs.fold<double>(0, (sum, doc) {
+                        double totalMonthExpenses = 0;
+                        double categoryExpenses = 0;
+                        final List<QueryDocumentSnapshot<Map<String, dynamic>>> categoryTxns = [];
+
+                        for (final doc in monthTransactions) {
                           final data = doc.data();
-                          final date = _extractDate(data);
-                          if (date == null ||
-                              date.isBefore(_startOfMonth) ||
-                              !date.isBefore(_startOfNextMonth)) {
-                            return sum;
-                          }
                           final double amount = (data['amount'] as num?)?.toDouble() ?? 0;
-                          final String type =
-                              (data['type'] as String?)?.toLowerCase() ?? '';
-                          if (type == 'expense') {
-                            return sum + amount.abs();
+                          final type = (data['type'] as String?)?.toLowerCase();
+                          final String category =
+                              (data['category'] as String?)?.trim().isNotEmpty == true
+                                  ? (data['category'] as String).trim()
+                                  : 'Uncategorized';
+
+                          final isExpense = type == 'expense' || amount < 0;
+
+                          if (isExpense) {
+                            final expenseValue = amount.abs();
+                            totalMonthExpenses += expenseValue;
+                            if (category.toLowerCase() == widget.categoryName.toLowerCase()) {
+                              categoryExpenses += expenseValue;
+                              categoryTxns.add(doc);
+                            }
                           }
-                          if (type == 'income') {
-                            return sum;
-                          }
-                          return amount < 0 ? sum + amount.abs() : sum;
+                        }
+
+                        categoryTxns.sort((a, b) {
+                          final dateA = _extractDate(a.data()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+                          final dateB = _extractDate(b.data()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+                          return dateB.compareTo(dateA);
                         });
 
-                        double categoryExpense = 0;
-                        for (final doc in monthTransactions) {
-                          final data = doc.data();
-                          final double amount = (data['amount'] as num?)?.toDouble() ?? 0;
-                          final String type =
-                              (data['type'] as String?)?.toLowerCase() ?? '';
-                          if (type == 'income') continue;
-                          categoryExpense += amount.abs();
-                        }
-
-                        final percent = totalExpenses == 0
+                        final percent = totalMonthExpenses == 0
                             ? 0
-                            : (categoryExpense / totalExpenses * 100);
-
-                        final grouped = <DateTime, List<Map<String, dynamic>>>{};
-                        for (final doc in monthTransactions) {
-                          final data = doc.data();
-                          final date = _extractDate(data) ?? DateTime.now();
-                          final dayKey = DateTime(date.year, date.month, date.day);
-                          grouped.putIfAbsent(dayKey, () => []).add(data);
-                        }
-
-                        final orderedDays = grouped.keys.toList()
-                          ..sort((a, b) => b.compareTo(a));
+                            : (categoryExpenses / totalMonthExpenses * 100);
 
                         return SingleChildScrollView(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildSummaryCard(categoryExpense, percent),
+                              _buildSummaryCard(percent, categoryExpenses),
                               const SizedBox(height: 16),
-                              ...orderedDays.map((day) {
-                                final transactions = grouped[day]!
-                                  ..sort((a, b) {
-                                    final dateA = _extractDate(a) ?? DateTime.now();
-                                    final dateB = _extractDate(b) ?? DateTime.now();
-                                    return dateB.compareTo(dateA);
-                                  });
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      DateFormat('MMM dd, EEEE').format(day),
-                                      style: TextStyle(
-                                        color: _themeService.textMain,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ...transactions.map((data) => _buildTransactionTile(data)),
-                                    const SizedBox(height: 16),
-                                  ],
-                                );
-                              }),
-                              if (monthTransactions.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 24),
-                                  child: Center(
-                                    child: Text(
-                                      'No transactions for this category this month.',
-                                      style: TextStyle(color: _themeService.textSub),
-                                    ),
-                                  ),
-                                ),
+                              _buildTransactionList(categoryTxns),
                             ],
                           ),
                         );
@@ -210,18 +172,19 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
     );
   }
 
-  Widget _buildSummaryCard(double categoryExpense, double percent) {
-    final cardColor = _themeService.cardBg;
+  Widget _buildSummaryCard(double percent, double categoryExpenses) {
     final textColor = _themeService.textMain;
+    final accentColor = _themeService.primaryBlue;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: _themeService.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 14,
+            blurRadius: 12,
             offset: const Offset(0, 6),
           ),
         ],
@@ -230,69 +193,167 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Expense in this period',
+            'Summary',
             style: TextStyle(
               color: textColor,
+              fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 140,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 0,
-                centerSpaceRadius: 50,
-                sections: [
-                  PieChartSectionData(
-                    value: percent.clamp(0, 100),
-                    color: _themeService.primaryBlue,
-                    radius: 60,
-                    title: '${percent.toStringAsFixed(1)}%',
-                    titleStyle: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    titlePositionPercentageOffset: 0.55,
+          Row(
+            children: [
+              SizedBox(
+                height: 120,
+                width: 120,
+                child: PieChart(
+                  PieChartData(
+                    sectionsSpace: 0,
+                    centerSpaceRadius: 40,
+                    startDegreeOffset: -90,
+                    sections: [
+                      PieChartSectionData(
+                        color: accentColor,
+                        value: percent,
+                        radius: 20,
+                        title: '${percent.toStringAsFixed(1)}%',
+                        titleStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      PieChartSectionData(
+                        color: _themeService.textSub.withValues(alpha: 0.2),
+                        value: (100 - percent).clamp(0, 100),
+                        radius: 18,
+                        title: '',
+                      ),
+                    ],
                   ),
-                  PieChartSectionData(
-                    value: (100 - percent).clamp(0, 100),
-                    color: _themeService.textSub.withValues(alpha: 0.2),
-                    radius: 60,
-                    title: '',
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            NumberFormat.currency(symbol: '₱').format(categoryExpense),
-            style: TextStyle(
-              color: textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          Text(
-            '${percent.toStringAsFixed(2)}% of total expense in this period',
-            style: TextStyle(
-              color: _themeService.textSub,
-              fontSize: 12,
-            ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${percent.toStringAsFixed(2)}% of total expense in this period',
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Expense in this period:',
+                      style: TextStyle(
+                        color: _themeService.textSub,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatCurrency(categoryExpenses),
+                      style: TextStyle(
+                        color: accentColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
+  Widget _buildTransactionList(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> categoryTxns,
+  ) {
+    if (categoryTxns.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: _themeService.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            'No transactions found for this category in the selected month.',
+            style: TextStyle(color: _themeService.textSub),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    final Map<DateTime, List<QueryDocumentSnapshot<Map<String, dynamic>>>> grouped = {};
+
+    for (final doc in categoryTxns) {
+      final data = doc.data();
+      final date = _extractDate(data) ?? DateTime.now();
+      final dateKey = DateTime(date.year, date.month, date.day);
+      grouped.putIfAbsent(dateKey, () => []).add(doc);
+    }
+
+    final sortedDates = grouped.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Transactions',
+          style: TextStyle(
+            color: _themeService.textMain,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        for (final date in sortedDates) ...[
+          Text(
+            DateFormat('MMM dd, EEEE').format(date),
+            style: TextStyle(
+              color: _themeService.textSub,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ...grouped[date]!.map(
+            (doc) => _buildTransactionTile(doc.data()),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
   Widget _buildTransactionTile(Map<String, dynamic> data) {
     final date = _extractDate(data) ?? DateTime.now();
-    final amount = (data['amount'] as num?)?.toDouble() ?? 0;
-    final String note = (data['note'] as String?)?.trim();
-    final String account = (data['accountName'] as String?)?.trim();
-    final String description =
-        (note?.isNotEmpty == true ? note : account) ?? 'No note';
+    final double amount = (data['amount'] as num?)?.toDouble() ?? 0;
+    final type = (data['type'] as String?)?.toLowerCase();
+    final bool isExpense = type == 'expense' || amount < 0;
+    final double expenseValue = amount.abs();
+
+    final title = (data['note'] as String?)?.trim().isNotEmpty == true
+        ? (data['note'] as String).trim()
+        : (data['accountName'] as String?)?.trim().isNotEmpty == true
+            ? (data['accountName'] as String).trim()
+            : widget.categoryName;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -311,16 +372,15 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withValues(alpha: 0.12),
               shape: BoxShape.circle,
+              color: _themeService.primaryBlue.withValues(alpha: 0.12),
             ),
             child: Icon(
-              amount < 0 ? Icons.remove_circle : Icons.add_circle,
-              color: _themeService.textMain,
-              size: 18,
+              isExpense ? Icons.remove_circle : Icons.add_circle,
+              color: isExpense ? Colors.redAccent : Colors.greenAccent.shade400,
             ),
           ),
           const SizedBox(width: 12),
@@ -329,7 +389,7 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  description,
+                  title,
                   style: TextStyle(
                     color: _themeService.textMain,
                     fontWeight: FontWeight.w700,
@@ -337,7 +397,7 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DateFormat('h:mm a').format(date),
+                  DateFormat('hh:mm a').format(date),
                   style: TextStyle(
                     color: _themeService.textSub,
                     fontSize: 12,
@@ -347,9 +407,9 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
             ),
           ),
           Text(
-            NumberFormat.currency(symbol: '₱').format(amount),
+            _formatCurrency(isExpense ? -expenseValue : expenseValue),
             style: TextStyle(
-              color: amount < 0 ? Colors.redAccent : Colors.greenAccent.shade400,
+              color: isExpense ? Colors.redAccent : Colors.greenAccent.shade400,
               fontWeight: FontWeight.w800,
             ),
           ),
