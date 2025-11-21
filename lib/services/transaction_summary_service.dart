@@ -95,13 +95,13 @@ class TransactionSummaryService {
   double getTotalIncome(List<AppTransaction> transactions) {
     return transactions
         .where((t) => !t.isExpense)
-        .fold(0.0, (sum, t) => sum + t.absoluteAmount);
+        .fold(0.0, (total, t) => total + t.absoluteAmount);
   }
 
   double getTotalExpense(List<AppTransaction> transactions) {
     return transactions
         .where((t) => t.isExpense)
-        .fold(0.0, (sum, t) => sum + t.absoluteAmount);
+        .fold(0.0, (total, t) => total + t.absoluteAmount);
   }
 
   double getBalance(List<AppTransaction> transactions) {

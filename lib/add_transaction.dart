@@ -122,27 +122,35 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             : FieldValue.serverTimestamp(), // Keep original creation time if editing
       };
 
-      if (isEditing) {
-        // UPDATE existing document
-        await FirebaseFirestore.instance
-            .collection('transactions')
-            .doc(widget.transactionId)
-            .update(data);
+        if (isEditing) {
+          // UPDATE existing document
+          await FirebaseFirestore.instance
+              .collection('transactions')
+              .doc(widget.transactionId)
+              .update(data);
 
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Transaction updated!')));
-      } else {
-        // CREATE new document
-        await FirebaseFirestore.instance.collection('transactions').add(data);
-        if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Transaction saved!')));
-      }
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(
+              const SnackBar(content: Text('Transaction updated!')),
+            );
+          }
+        } else {
+          // CREATE new document
+          await FirebaseFirestore.instance.collection('transactions').add(data);
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(
+              const SnackBar(content: Text('Transaction saved!')),
+            );
+          }
+        }
 
-      if (mounted) Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -260,9 +268,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     uid: user!.uid,
                     type: _type.toLowerCase(),
                   ),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData)
-                      return const Center(child: CircularProgressIndicator());
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
                     final docs = snapshot.data!.docs;
                     return ListView.builder(
                       itemCount: docs.length,
@@ -560,8 +569,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime(2030),
                               );
-                              if (picked != null)
+                              if (picked != null) {
                                 setState(() => _selectedDate = picked);
+                              }
                             },
                             child: Container(
                               height: 60,
@@ -571,7 +581,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black.withValues(alpha: 0.05),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
@@ -638,11 +648,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFF2D79F6).withOpacity(0.3)),
+          border: Border.all(
+            color: const Color(0xFF2D79F6).withValues(alpha: 0.3),
+          ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.withOpacity(0.05),
+              color: Colors.blue.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -680,7 +692,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),

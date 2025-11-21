@@ -116,12 +116,13 @@ class ThemeService extends ChangeNotifier {
     // Load Theme
     String? theme = prefs.getString('themeMode');
     if (theme != null) {
-      if (theme == 'Light')
+      if (theme == 'Light') {
         _themeMode = ThemeMode.light;
-      else if (theme == 'Dark')
+      } else if (theme == 'Dark') {
         _themeMode = ThemeMode.dark;
-      else
+      } else {
         _themeMode = ThemeMode.system;
+      }
     }
 
     // Load Currency
