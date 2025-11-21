@@ -99,11 +99,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           _buildSection(
                             title: "Income categories",
                             categories: _incomeCategories,
+                            isIncome: true,
                           ),
                           const SizedBox(height: 24),
                           _buildSection(
                             title: "Expense categories",
                             categories: _expenseCategories,
+                            isIncome: false,
                           ),
                           const SizedBox(height: 24),
                           _buildAddCategoryButton(),
@@ -146,7 +148,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  Widget _buildSection({required String title, required List<String> categories}) {
+  Widget _buildSection({
+    required String title,
+    required List<String> categories,
+    required bool isIncome,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -168,8 +174,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           children: [
             for (int i = 0; i < categories.length; i++)
               _buildCategoryRow(
-                categories[i],
-                _categoryColors[i % _categoryColors.length],
+                categoryName: categories[i],
+                isIncome: isIncome,
               ),
           ],
         ),
@@ -177,7 +183,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  Widget _buildCategoryRow(String categoryName, Color iconColor) {
+  Widget _buildCategoryRow({
+    required String categoryName,
+    required bool isIncome,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -199,12 +208,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
+              color: _themeService.primaryBlue.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.category_rounded,
-              color: iconColor,
+              color: _themeService.primaryBlue,
               size: 20,
             ),
           ),
@@ -219,14 +228,302 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               ),
             ),
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: _themeService.textSub),
-            onPressed: () {
-              // TODO: open category actions
+            onSelected: (value) {
+              switch (value) {
+                case 'edit':
+                  _showEditCategoryDialog(
+                    originalName: categoryName,
+                    isIncome: isIncome,
+                  );
+                  break;
+                case 'delete':
+                  _confirmDeleteCategory(
+                    categoryName: categoryName,
+                    isIncome: isIncome,
+                  );
+                  break;
+              }
             },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Text('Edit'),
+              ),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Text('Delete'),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  void _showEditCategoryDialog({
+    required String originalName,
+    required bool isIncome,
+  }) {
+    final TextEditingController nameController =
+        TextEditingController(text: originalName);
+    int selectedIconIndex = 0;
+
+    final List<IconData> iconOptions = [
+      Icons.directions_car,
+      Icons.checkroom,
+      Icons.restaurant,
+      Icons.home,
+      Icons.shopping_cart,
+      Icons.receipt_long,
+      Icons.healing,
+      Icons.movie,
+      Icons.sports_tennis,
+      Icons.phone_android,
+    ];
+
+    final List<Color> iconColors = [
+      Colors.purple,
+      Colors.orange,
+      Colors.red,
+      Colors.pink,
+      Colors.blue,
+      Colors.deepOrange,
+      Colors.green,
+      Colors.indigo,
+      Colors.teal,
+      Colors.lime,
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: _themeService.cardBg,
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Text(
+                        'Edit category',
+                        style: TextStyle(
+                          color: _themeService.textMain,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Name',
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        filled: true,
+                        fillColor: _themeService.cardBg,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: _themeService.textSub.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: _themeService.primaryBlue),
+                        ),
+                      ),
+                      style: TextStyle(color: _themeService.textMain),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Icon',
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _themeService.cardBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _themeService.textSub.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (int i = 0; i < iconOptions.length; i++)
+                            GestureDetector(
+                              onTap: () => setStateDialog(() {
+                                selectedIconIndex = i;
+                              }),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: iconColors[i % iconColors.length],
+                                  border: Border.all(
+                                    color: selectedIconIndex == i
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Icon(
+                                  iconOptions[i],
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _themeService.textMain,
+                              side: BorderSide(
+                                color: _themeService.textSub.withValues(alpha: 0.3),
+                              ),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text(
+                              'CANCEL',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _themeService.primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              final updatedName = nameController.text.trim();
+
+                              setState(() {
+                                final list = isIncome
+                                    ? _incomeCategories
+                                    : _expenseCategories;
+                                final index = list.indexOf(originalName);
+
+                                if (index != -1 && updatedName.isNotEmpty) {
+                                  list[index] = updatedName;
+                                  // TODO: also update Firestore and save selected icon.
+                                }
+                              });
+
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text(
+                              'SAVE',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteCategory({
+    required String categoryName,
+    required bool isIncome,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: _themeService.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Delete category',
+            style: TextStyle(
+              color: _themeService.textMain,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to delete "$categoryName"?',
+            style: TextStyle(color: _themeService.textSub),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'CANCEL',
+                style: TextStyle(color: _themeService.textMain),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  if (isIncome) {
+                    _incomeCategories.remove(categoryName);
+                  } else {
+                    _expenseCategories.remove(categoryName);
+                  }
+                  // TODO: remove from Firestore as well.
+                });
+
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'DELETE',
+                style: TextStyle(color: Colors.redAccent.shade200),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
