@@ -240,49 +240,59 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }) {
     final cardColor = _themeService.cardBg;
     final textColor = _themeService.textMain;
+
     Widget buildCard(String title, double value, Color accent, IconData icon) {
       final isNegative = value < 0;
-      return Expanded(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: accent, size: 18),
+
+      return Container(
+        // ❌ no horizontal margin here anymore
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: 10),
-                  Text(
+                  child: Icon(icon, color: accent, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: textColor,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Amount – will shrink a bit instead of overflowing if very long
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
                 _formatCurrency(value),
                 style: TextStyle(
                   color: isNegative ? Colors.redAccent : accent,
@@ -290,26 +300,50 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                "This month",
-                style: TextStyle(
-                  color: _themeService.textSub,
-                  fontSize: 12,
-                ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "This month",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _themeService.textSub,
+                fontSize: 12,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
 
     return Row(
       children: [
-        buildCard('Income', income, Colors.greenAccent.shade400, Icons.trending_up),
-        buildCard('Expenses', -expenses, Colors.redAccent, Icons.trending_down),
-        buildCard('Total', total, total >= 0 ? _themeService.primaryBlue : Colors.redAccent,
-            Icons.account_balance_wallet_rounded),
+        Expanded(
+          child: buildCard(
+            'Income',
+            income,
+            Colors.greenAccent.shade400,
+            Icons.trending_up,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: buildCard(
+            'Expenses',
+            -expenses,
+            Colors.redAccent,
+            Icons.trending_down,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: buildCard(
+            'Total',
+            total,
+            total >= 0 ? _themeService.primaryBlue : Colors.redAccent,
+            Icons.account_balance_wallet_rounded,
+          ),
+        ),
       ],
     );
   }
