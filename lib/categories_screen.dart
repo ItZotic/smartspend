@@ -124,12 +124,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             uid: user!.uid,
             type: type,
           ),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData)
-              return const Center(child: CircularProgressIndicator());
-            final categoryDocs = snapshot.data!.docs;
-            return Column(
-              children: categoryDocs
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final categoryDocs = snapshot.data!.docs;
+              return Column(
+                children: categoryDocs
                   .map((doc) => _buildCategoryRow(doc))
                   .toList(),
             );

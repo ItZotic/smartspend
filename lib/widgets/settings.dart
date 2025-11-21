@@ -169,14 +169,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ),
-                              trailing: Transform.scale(
-                                scale: 0.8,
-                                child: Switch(
-                                  value: _remindEveryday,
-                                  activeColor: Colors.white,
-                                  activeTrackColor: _themeService.primaryBlue,
-                                  inactiveThumbColor: Colors.grey.shade400,
-                                  inactiveTrackColor: Colors.grey.shade700,
+                                trailing: Transform.scale(
+                                  scale: 0.8,
+                                  child: Switch(
+                                    value: _remindEveryday,
+                                    activeThumbColor: Colors.white,
+                                    activeTrackColor: _themeService.primaryBlue,
+                                    inactiveThumbColor: Colors.grey.shade400,
+                                    inactiveTrackColor: Colors.grey.shade700,
                                   onChanged: (bool value) =>
                                       setState(() => _remindEveryday = value),
                                 ),
