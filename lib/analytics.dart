@@ -430,7 +430,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             Column(
               children: [
                 SizedBox(
-                  height: 180,
+                  height: 170,
                   child: PieChart(
                     PieChartData(
                       sectionsSpace: 2,
@@ -440,7 +440,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           PieChartSectionData(
                             value: sections[i].value,
                             color: palette[i % palette.length],
-                            radius: 60,
+                            radius: 55,
                             title: total == 0
                                 ? ''
                                 : '${(sections[i].value / total * 100).toStringAsFixed(0)}%',
@@ -452,7 +452,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           ),
                       ],
                       centerSpaceColor: cardColor,
-                      centerSpaceRadius: 58,
+                      centerSpaceRadius: 50,
                     ),
                   ),
                 ),
