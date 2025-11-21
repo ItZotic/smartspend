@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-// ❗️ UPDATE THIS IMPORT to match your project name in pubspec.yaml
 import 'package:smartspend/services/firestore_service.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+  // Optional parameters for Edit Mode
+  final String? transactionId;
+  final Map<String, dynamic>? transactionData;
+
+  const AddTransactionScreen({
+    super.key,
+    this.transactionId,
+    this.transactionData,
+  });
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
@@ -15,19 +22,48 @@ class AddTransactionScreen extends StatefulWidget {
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _descController = TextEditingController();
 
-  // State variables
   String _categoryName = 'Food & Dining';
-  String _categoryId = '';
-  String _categoryIcon = 'restaurant';
-
   String _account = 'Cash';
   String _type = 'Expense';
   DateTime _selectedDate = DateTime.now();
   String _amountText = '';
   bool _isSaving = false;
+  bool _isDeleting = false;
 
   final FirestoreService _firestoreService = FirestoreService();
   final user = FirebaseAuth.instance.currentUser;
+
+  // Helper to check if we are editing
+  bool get isEditing => widget.transactionId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill data if editing
+    if (isEditing && widget.transactionData != null) {
+      final data = widget.transactionData!;
+      _categoryName = data['category'] ?? 'Food & Dining';
+      _account = data['account'] ?? 'Cash';
+      _type = (data['type'] ?? 'expense').toString() == 'income'
+          ? 'Income'
+          : 'Expense';
+
+      if (data['date'] != null) {
+        _selectedDate = (data['date'] as Timestamp).toDate();
+      }
+
+      _descController.text = data['name'] ?? '';
+
+      // Handle amount (convert to string without negative sign for display)
+      double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+      _amountText = amount.abs().toString();
+
+      // Remove decimal if it's .0
+      if (_amountText.endsWith('.0')) {
+        _amountText = _amountText.substring(0, _amountText.length - 2);
+      }
+    }
+  }
 
   String get _displayAmount {
     if (_amountText.isEmpty) return '0';
@@ -72,7 +108,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       final double amount = double.parse(_amountText);
       final double finalAmount = _type == 'Expense' ? -amount : amount;
 
-      await FirebaseFirestore.instance.collection('transactions').add({
+      final data = {
         'userId': user!.uid,
         'uid': user!.uid,
         'amount': finalAmount,
@@ -81,15 +117,32 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         'account': _account,
         'name': _descController.text.trim(),
         'date': Timestamp.fromDate(_selectedDate),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        'createdAt': isEditing
+            ? widget.transactionData!['createdAt']
+            : FieldValue.serverTimestamp(), // Keep original creation time if editing
+      };
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Transaction saved!')));
+      if (isEditing) {
+        // UPDATE existing document
+        await FirebaseFirestore.instance
+            .collection('transactions')
+            .doc(widget.transactionId)
+            .update(data);
+
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Transaction updated!')));
+      } else {
+        // CREATE new document
+        await FirebaseFirestore.instance.collection('transactions').add(data);
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Transaction saved!')));
       }
+
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -101,6 +154,34 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
   }
 
+  Future<void> _deleteTransaction() async {
+    if (!isEditing) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('transactions')
+          .doc(widget.transactionId)
+          .delete();
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Transaction deleted')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting: $e')));
+        setState(() => _isDeleting = false);
+      }
+    }
+  }
+
+  // ... (Selection Sheet Methods are same as before) ...
   void _showSelectionSheet({
     required String title,
     required List<String> items,
@@ -108,7 +189,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF051C3F), // Dark Navy
+      backgroundColor: const Color(0xFF051C3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -154,7 +235,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   void _showCategorySheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF051C3F), // Dark Navy
+      backgroundColor: const Color(0xFF051C3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -197,11 +278,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                             style: const TextStyle(color: Colors.white),
                           ),
                           onTap: () {
-                            setState(() {
-                              _categoryName = data['name'];
-                              _categoryId = docs[index].id;
-                              _categoryIcon = data['icon'] ?? 'category';
-                            });
+                            setState(() => _categoryName = data['name']);
                             Navigator.pop(context);
                           },
                         );
@@ -256,18 +333,27 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       ),
                     ),
                     Text(
-                      "Add Transaction",
+                      isEditing ? "Edit Transaction" : "Add Transaction",
                       style: TextStyle(
                         color: textDark,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    _isSaving
+                    // Delete Button if Editing, otherwise Spacer/Loader
+                    _isSaving || _isDeleting
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : isEditing
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
+                            onPressed: _deleteTransaction,
                           )
                         : TextButton(
                             onPressed: _saveTransaction,
@@ -349,7 +435,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                       ),
 
-                      // Spacing to push amount down visually
                       const SizedBox(height: 20),
 
                       // --- Amount Display ---
@@ -389,6 +474,34 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       ),
 
                       const SizedBox(height: 20),
+
+                      // Only show BIG save button at bottom if Editing (to make it easier)
+                      if (isEditing)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: _saveTransaction,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryBlue,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                "UPDATE TRANSACTION",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
@@ -404,8 +517,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                 ),
                 child: Column(
-                  mainAxisSize:
-                      MainAxisSize.min, // Important for column in layout
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

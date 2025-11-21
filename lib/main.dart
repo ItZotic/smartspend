@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:smartspend/services/theme_service.dart';
 
-// Make sure these filenames are ALL lowercase
+// ✅ Screens (Fixed imports based on your screenshot)
 import 'login.dart';
 import 'register.dart';
-import 'main_menu.dart';
+import 'main_menu.dart'; // It's in the same folder as main.dart
 import 'forgot_password.dart';
 
 void main() async {
@@ -26,17 +27,42 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'SmartSpend',
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LoginScreen(), // ✅ class LoginScreen
-        '/register': (context) =>
-            const RegisterScreen(), // ✅ class RegisterScreen
-        '/main_menu': (context) =>
-            const MainMenuScreen(), // ✅ class MainMenuScreen
-        '/forgot_password': (context) => const ForgotPasswordScreen(),
+    final themeService = ThemeService();
+
+    return AnimatedBuilder(
+      animation: themeService,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'SmartSpend',
+
+          // Connect Theme Service
+          themeMode: themeService.themeMode,
+
+          // Light Theme
+          theme: ThemeData(
+            brightness: Brightness.light,
+            primaryColor: const Color(0xFF2979FF),
+            scaffoldBackgroundColor: const Color(0xFFF3F8FC),
+            useMaterial3: true,
+          ),
+
+          // Dark Theme
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primaryColor: const Color(0xFF2979FF),
+            scaffoldBackgroundColor: const Color(0xFF031229),
+            useMaterial3: true,
+          ),
+
+          initialRoute: '/',
+          routes: {
+            '/': (context) => const LoginScreen(),
+            '/register': (context) => const RegisterScreen(),
+            '/main_menu': (context) => const MainMenuScreen(),
+            '/forgot_password': (context) => const ForgotPasswordScreen(),
+          },
+        );
       },
     );
   }

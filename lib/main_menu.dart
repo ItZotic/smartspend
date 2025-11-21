@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:smartspend/services/theme_service.dart'; // Import Theme Service
 import 'home.dart';
 import 'budget.dart';
 import 'analytics.dart';
 import 'accounts.dart';
 import 'categories_screen.dart';
-import '../services/auth_service.dart'; // Check your path for auth service
+import '../services/auth_service.dart';
 import 'add_transaction.dart';
+import 'package:flutter/rendering.dart'; // <-- REQUIRED for ScrollDirection
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
@@ -17,6 +18,8 @@ class MainMenuScreen extends StatefulWidget {
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
   final AuthService _authService = AuthService();
+  final ThemeService _themeService = ThemeService(); // Theme Service
+
   int _selectedIndex = 0;
   late final ScrollController _homeScrollController;
   late final ScrollController _budgetScrollController;
@@ -70,9 +73,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   @override
   void dispose() {
     _controllerListeners.forEach((controller, listener) {
-      controller
-        ..removeListener(listener)
-        ..dispose();
+      controller.removeListener(listener);
+      controller.dispose();
     });
     _controllerListeners.clear();
     super.dispose();
@@ -87,73 +89,74 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(
-      0xFF2D79F6,
-    ); // Updated to match new blue theme
-    const Color inactiveColor = Colors.grey;
+    // Wrap in AnimatedBuilder to listen for theme changes
+    return AnimatedBuilder(
+      animation: _themeService,
+      builder: (context, _) {
+        return Scaffold(
+          extendBody: true,
 
-    return Scaffold(
-      // 1. AppBar REMOVED here to fix the double title issue.
-      // Each screen now controls its own top area.
-      extendBody:
-          true, // Optional: Lets content go behind nav bar for a modern look
+          floatingActionButton: AnimatedSlide(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            offset: _fabVisible ? Offset.zero : const Offset(0, 2),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 120),
+              opacity: _fabVisible ? 1 : 0,
+              child: FloatingActionButton(
+                backgroundColor: _themeService.primaryBlue,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.add, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AddTransactionScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
-      floatingActionButton: AnimatedSlide(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        offset: _fabVisible ? Offset.zero : const Offset(0, 2),
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 120),
-          opacity: _fabVisible ? 1 : 0,
-          child: FloatingActionButton(
-            backgroundColor: primaryColor,
-            shape: const CircleBorder(), // Round FAB
-            child: const Icon(Icons.add, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
-              );
-            },
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          body: _pages[_selectedIndex],
 
-      body: _pages[_selectedIndex],
-
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        backgroundColor: Colors.white,
-        selectedItemColor: primaryColor,
-        unselectedItemColor: inactiveColor,
-        showUnselectedLabels: true,
-        elevation: 10,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            // Use ThemeService colors here
+            backgroundColor: _themeService.cardBg,
+            selectedItemColor: _themeService.primaryBlue,
+            unselectedItemColor: Colors.grey,
+            showUnselectedLabels: true,
+            elevation: 10,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.account_balance_wallet_rounded),
+                label: 'Budget',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.bar_chart_rounded),
+                label: 'Analysis',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.account_balance_rounded),
+                label: 'Accounts',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.category_rounded),
+                label: 'Categories',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet_rounded),
-            label: 'Budget',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: 'Analysis',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_rounded),
-            label: 'Accounts',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.category_rounded),
-            label: 'Categories',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

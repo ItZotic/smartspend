@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF2D79F6).withOpacity(0.3),
+                        color: const Color(0xFF2D79F6).withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 8),
                       ),
@@ -261,12 +261,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Icon logic (you can expand this map or use your helper function)
     IconData icon = Icons.category;
-    if (data['category'] == 'Food & Dining')
-      icon = Icons.restaurant;
-    else if (data['category'] == 'Transportation')
-      icon = Icons.directions_car;
-    else if (data['category'] == 'Salary')
-      icon = Icons.work;
+    if (data['category'] == 'Food & Dining'){
+      icon = Icons.restaurant; }
+    else if (data['category'] == 'Transportation') {
+      icon = Icons.directions_car; }
+    else if (data['category'] == 'Salary') {
+      icon = Icons.work; }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -276,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
