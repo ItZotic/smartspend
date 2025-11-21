@@ -1,38 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:smartspend/services/firestore_service.dart';
+import 'package:intl/intl.dart';
 import 'package:smartspend/services/theme_service.dart';
-
-final Map<String, IconData> iconMap = {
-  'restaurant': Icons.restaurant,
-  'directions_car': Icons.directions_car,
-  'movie': Icons.movie,
-  'child_care': Icons.child_care,
-  'face': Icons.face,
-  'receipt': Icons.receipt,
-  'directions_car_filled': Icons.directions_car_filled,
-  'checkroom': Icons.checkroom,
-  'school': Icons.school,
-  'devices': Icons.devices,
-  'emoji_events': Icons.emoji_events,
-  'local_offer': Icons.local_offer,
-  'confirmation_number': Icons.confirmation_number,
-  'replay': Icons.replay,
-  'house': Icons.house,
-  'work': Icons.work,
-  'trending_up': Icons.trending_up,
-  'health': Icons.favorite,
-  'home': Icons.home,
-  'insurance': Icons.shield,
-  'shopping': Icons.shopping_cart,
-  'social': Icons.people,
-  'sport': Icons.sports_tennis,
-  'tax': Icons.account_balance,
-  'telephone': Icons.phone,
-  'category': Icons.category,
-};
 
 class BudgetScreen extends StatefulWidget {
   final ScrollController? scrollController;
@@ -45,8 +14,48 @@ class BudgetScreen extends StatefulWidget {
 
 class _BudgetScreenState extends State<BudgetScreen> {
   final user = FirebaseAuth.instance.currentUser;
-  final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
+
+  DateTime _selectedMonth =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+  final List<String> _allExpenseCategories = [
+    'Food & Dining',
+    'Transportation',
+    'Bills',
+    'Groceries',
+    'Entertainment',
+    'Shopping',
+    'Healthcare',
+    'Education',
+    'Travel',
+    'Utilities',
+  ];
+
+  final Set<String> _budgetedCategories = {};
+  final Map<String, double> _budgetLimits = {};
+  final Map<String, double> _spentAmounts = {};
+
+  DateTime get _monthStart =>
+      DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+
+  DateTime get _nextMonthStart =>
+      DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+
+  String get _monthLabel => DateFormat.yMMMM().format(_selectedMonth);
+
+  void _changeMonth(int offset) {
+    setState(() {
+      _selectedMonth =
+          DateTime(_selectedMonth.year, _selectedMonth.month + offset, 1);
+    });
+  }
+
+  double get _totalBudget =>
+      _budgetLimits.values.fold(0.0, (sum, value) => sum + value);
+
+  double get _totalSpent =>
+      _spentAmounts.values.fold(0.0, (sum, value) => sum + value);
 
   @override
   Widget build(BuildContext context) {
@@ -87,17 +96,24 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       ),
                     ),
                   ),
-
                   Expanded(
                     child: ListView(
                       controller: widget.scrollController,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       children: [
                         _buildMonthSelector(),
-                        const SizedBox(height: 20),
-                        _buildBudgetSummary(),
+                        const SizedBox(height: 16),
+                        _buildBudgetSummaryCard(
+                          totalBudget: _totalBudget,
+                          totalSpent: _totalSpent,
+                        ),
                         const SizedBox(height: 24),
-                        _buildCategoryList(),
+                        _buildBudgetedSection(),
+                        const SizedBox(height: 24),
+                        _buildNotBudgetedSection(),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -105,6 +121,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ],
               ),
             ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            backgroundColor: _themeService.primaryBlue,
+            onPressed: () {
+              // TODO: open add budget screen
+            },
+            child: const Icon(Icons.add, color: Colors.white),
           ),
         );
       },
@@ -121,10 +144,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
             color: _themeService.textMain.withValues(alpha: 0.7),
             size: 18,
           ),
-          onPressed: () {},
+          onPressed: () => _changeMonth(-1),
         ),
         Text(
-          "November, 2025",
+          _monthLabel,
           style: TextStyle(
             color: _themeService.textMain,
             fontSize: 18,
@@ -137,186 +160,347 @@ class _BudgetScreenState extends State<BudgetScreen> {
             color: _themeService.textMain.withValues(alpha: 0.7),
             size: 18,
           ),
-          onPressed: () {},
+          onPressed: () => _changeMonth(1),
         ),
       ],
     );
   }
 
-  Widget _buildBudgetSummary() {
-    // In a real app, you'd calculate these
-    double totalBudget = 0.00;
-    double totalSpent = 0.00;
 
+  Widget _buildBudgetSummaryCard({
+    required double totalBudget,
+    required double totalSpent,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
         color: _themeService.cardBg,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
-              alpha: _themeService.isDarkMode ? 0.3 : 0.05,
+              alpha: _themeService.isDarkMode ? 0.3 : 0.06,
             ),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Column(
-            children: [
-              Text(
-                "TOTAL BUDGET",
-                style: TextStyle(
-                  color: _themeService.textSub,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "TOTAL BUDGET",
+                  style: TextStyle(
+                    color: _themeService.textSub,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _themeService.formatCurrency(totalBudget), // Updated
-                style: TextStyle(
-                  color: _themeService.textMain,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 8),
+                Text(
+                  _themeService.formatCurrency(totalBudget),
+                  style: TextStyle(
+                    color: _themeService.textMain,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Container(
             width: 1,
-            height: 40,
+            height: 56,
             color: _themeService.textSub.withValues(alpha: 0.2),
           ),
-          Column(
-            children: [
-              Text(
-                "TOTAL SPENT",
-                style: TextStyle(
-                  color: _themeService.textSub,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  "TOTAL SPENT",
+                  style: TextStyle(
+                    color: _themeService.textSub,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _themeService.formatCurrency(totalSpent), // Updated
-                style: TextStyle(
-                  color: _themeService.textMain,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 8),
+                Text(
+                  _themeService.formatCurrency(totalSpent),
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestoreService.streamUserCategories(
-        uid: user!.uid,
-        type: 'expense',
-      ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final categoryDocs = snapshot.data?.docs ?? [];
+  Widget _buildBudgetedSection() {
+    final budgeted =
+        _allExpenseCategories.where(_budgetedCategories.contains).toList();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Not budgeted this month",
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Budgeted categories: $_monthLabel",
+          style: TextStyle(
+            color: _themeService.textMain,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (budgeted.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _themeService.cardBg,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Text(
+              "Currently, no budget is applied for this month. Set budget limits for this month, or copy your budget limits from previous months.",
               style: TextStyle(
-                color: _themeService.textMain,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+                color: _themeService.textSub,
+                fontSize: 14,
+                height: 1.4,
               ),
             ),
-            const SizedBox(height: 16),
-            if (categoryDocs.isEmpty)
-              Center(
-                child: Text(
-                  "No categories yet",
-                  style: TextStyle(color: _themeService.textSub),
-                ),
-              ),
-            ...categoryDocs.map((doc) {
-              return _buildCategoryRow(doc);
-            }),
-          ],
-        );
-      },
+          )
+        else
+          Column(
+            children: budgeted
+                .map(
+                  (category) => _buildBudgetedRow(
+                    category,
+                    _budgetLimits[category] ?? 0,
+                    _spentAmounts[category] ?? 0,
+                  ),
+                )
+                .toList(),
+          ),
+      ],
     );
   }
 
-  Widget _buildCategoryRow(DocumentSnapshot categoryDoc) {
-    final categoryData = categoryDoc.data() as Map<String, dynamic>;
-    final categoryName = categoryData['name'] ?? 'Unnamed';
-    final categoryId = categoryDoc.id;
-    final iconString = categoryData['icon'] ?? 'category';
-    final iconData = iconMap[iconString] ?? Icons.category;
+  Widget _buildBudgetedRow(
+    String category,
+    double budgetAmount,
+    double spentAmount,
+  ) {
+    final progress = budgetAmount == 0
+        ? 0.0
+        : (spentAmount / budgetAmount).clamp(0.0, 1.0);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _themeService.cardBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _themeService.primaryBlue.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.category_rounded,
+              color: _themeService.primaryBlue,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  category,
+                  style: TextStyle(
+                    color: _themeService.textMain,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor:
+                        _themeService.primaryBlue.withValues(alpha: 0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _themeService.primaryBlue,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Spent ${_themeService.formatCurrency(spentAmount)} of ${_themeService.formatCurrency(budgetAmount)}",
+                  style: TextStyle(
+                    color: _themeService.textSub,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _themeService.textMain,
+              side: BorderSide(
+                color: _themeService.textSub.withValues(alpha: 0.3),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => _showSetBudgetDialog(category),
+            child: const Text(
+              "EDIT",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotBudgetedSection() {
+    final notBudgeted =
+        _allExpenseCategories.where((c) => !_budgetedCategories.contains(c));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Not budgeted this month",
+          style: TextStyle(
+            color: _themeService.textMain,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (notBudgeted.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _themeService.cardBg,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Text(
+              "All categories have budgets this month.",
+              style: TextStyle(
+                color: _themeService.textSub,
+                fontSize: 14,
+              ),
+            ),
+          )
+        else
+          Column(
+            children: notBudgeted
+                .map((category) => _buildNotBudgetedRow(category))
+                .toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNotBudgetedRow(String category) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _themeService.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: _themeService.primaryBlue.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
             ),
-            child: Icon(iconData, color: _themeService.primaryBlue),
+            child: Icon(
+              Icons.category_rounded,
+              color: _themeService.primaryBlue,
+              size: 22,
+            ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
-              categoryName,
+              category,
               style: TextStyle(
                 color: _themeService.textMain,
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _themeService.bgBottom,
-              foregroundColor: _themeService.primaryBlue,
-              elevation: 0,
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _themeService.textMain,
+              side: BorderSide(
+                color: _themeService.textSub.withValues(alpha: 0.3),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
-                side: BorderSide(
-                  color: _themeService.primaryBlue.withValues(alpha: 0.3),
-                ),
               ),
             ),
-            onPressed: () {
-              _showSetBudgetDialog(categoryId, categoryName, iconData);
-            },
+            onPressed: () => _showSetBudgetDialog(category),
             child: const Text(
               "SET BUDGET",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -327,97 +511,165 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  void _showSetBudgetDialog(
-    String categoryId,
-    String categoryName,
-    IconData iconData,
-  ) {
-    final TextEditingController limitController = TextEditingController();
+  void _showSetBudgetDialog(String categoryName) {
     showDialog(
       context: context,
       builder: (context) {
+        final TextEditingController limitController = TextEditingController(
+          text: _budgetLimits[categoryName]?.toStringAsFixed(0) ?? '',
+        );
+
         return AlertDialog(
           backgroundColor: _themeService.cardBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
-          title: Text(
-            "Set budget",
-            style: TextStyle(color: _themeService.textMain),
-          ),
+          contentPadding: const EdgeInsets.all(20),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: _themeService.primaryBlue.withValues(alpha: 0.1),
-                    child: Icon(iconData, color: _themeService.primaryBlue),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    categoryName,
-                    style: TextStyle(
-                      color: _themeService.textMain,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: limitController,
-                style: TextStyle(color: _themeService.textMain),
-                decoration: InputDecoration(
-                  labelText: "Limit",
-                  labelStyle: TextStyle(color: _themeService.textSub),
-                  // Updated prefix to use ThemeService currency symbol
-                  prefixText: _themeService.currencySymbol,
-                  prefixStyle: TextStyle(
+              Center(
+                child: Text(
+                  'Set budget',
+                  style: TextStyle(
                     color: _themeService.textMain,
                     fontSize: 18,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _themeService.cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _themeService.textSub.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _themeService.primaryBlue.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.category_rounded,
+                        color: _themeService.primaryBlue,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        categoryName,
+                        style: TextStyle(
+                          color: _themeService.textMain,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Limit',
+                style: TextStyle(
+                  color: _themeService.textMain,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: limitController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.right,
+                decoration: InputDecoration(
+                  hintText: '0.00',
+                  hintStyle: TextStyle(color: _themeService.textSub),
+                  filled: true,
+                  fillColor: _themeService.cardBg,
                   enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
                       color: _themeService.textSub.withValues(alpha: 0.3),
                     ),
-                    borderRadius: BorderRadius.circular(10),
                   ),
                   focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: _themeService.primaryBlue),
-                    borderRadius: BorderRadius.circular(10),
                   ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Month: $_monthLabel',
+                style: TextStyle(
+                  color: _themeService.textSub,
+                  fontSize: 14,
                 ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _themeService.textMain,
+                        side: BorderSide(
+                          color: _themeService.textSub.withValues(alpha: 0.4),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(
+                        'CANCEL',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _themeService.primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        final enteredLimit = double.tryParse(limitController.text) ?? 0;
+                        setState(() {
+                          _budgetedCategories.add(categoryName);
+                          _budgetLimits[categoryName] = enteredLimit;
+                        });
+                        // TODO: persist budget limit
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text(
+                        'SET',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                "CANCEL",
-                style: TextStyle(color: _themeService.textSub),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _themeService.primaryBlue,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                // Add your save logic here
-                Navigator.of(context).pop();
-              },
-              child: const Text("SET"),
-            ),
-          ],
         );
       },
     );
