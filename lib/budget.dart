@@ -155,8 +155,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black
-                .withValues(alpha: _themeService.isDarkMode ? 0.3 : 0.05),
+            color: Colors.black.withValues(
+              _themeService.isDarkMode ? 0.3 : 0.05,
+            ),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
