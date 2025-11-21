@@ -58,10 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Padding(
-                padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: SmartSpendAppBarTitle(),
-              ),
-              const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
                   'Welcome back!',
