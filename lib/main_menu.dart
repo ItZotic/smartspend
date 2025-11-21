@@ -5,7 +5,6 @@ import 'budget.dart';
 import 'analytics.dart';
 import 'accounts.dart';
 import 'categories_screen.dart';
-import '../services/auth_service.dart';
 import 'add_transaction.dart';
 import 'package:flutter/rendering.dart'; // <-- REQUIRED for ScrollDirection
 
@@ -17,7 +16,6 @@ class MainMenuScreen extends StatefulWidget {
 }
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
-  final AuthService _authService = AuthService();
   final ThemeService _themeService = ThemeService(); // Theme Service
 
   int _selectedIndex = 0;

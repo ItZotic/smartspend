@@ -343,6 +343,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                     'category': categoryCtrl.text,
                     'amount': amount,
                   });
+              if (!context.mounted) return;
               Navigator.pop(context);
             },
             child: const Text(

@@ -88,7 +88,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
+            color: Colors.black.withValues(
               _themeService.isDarkMode ? 0.3 : 0.05,
             ),
             blurRadius: 15,
@@ -101,7 +101,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withOpacity(0.1),
+              color: _themeService.primaryBlue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: _themeService.primaryBlue, size: 28),
