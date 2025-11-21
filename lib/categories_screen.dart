@@ -44,21 +44,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     Color(0xFF6ED1FF),
   ];
 
-  final List<IconData> _iconOptions = const [
-    Icons.category_rounded,
-    Icons.directions_car,
-    Icons.restaurant,
-    Icons.shopping_bag,
-    Icons.home,
-    Icons.movie,
-    Icons.sports_soccer,
-    Icons.stacked_bar_chart,
-    Icons.flight_takeoff,
-    Icons.local_hospital,
-    Icons.school,
-    Icons.wallet,
-  ];
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -108,9 +93,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             title: "Expense categories",
                             categories: _expenseCategories,
                           ),
-                          const SizedBox(height: 28),
-                          _buildAddCategoryButton(),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 120),
                         ],
                       ),
                     ),
@@ -119,34 +102,25 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               ),
             ),
           ),
+          floatingActionButton: Padding(
+            padding: const EdgeInsets.only(bottom: 80.0),
+            child: FloatingActionButton.extended(
+              backgroundColor: _themeService.primaryBlue,
+              onPressed: () {
+                // TODO: open Add Category page
+              },
+              label: const Text(
+                "ADD NEW CATEGORY",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              icon: const Icon(Icons.add, color: Colors.white),
+            ),
+          ),
         );
       },
-    );
-  }
-
-  Widget _buildAddCategoryButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _themeService.primaryBlue,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          elevation: 4,
-        ),
-        onPressed: _showAddCategoryDialog,
-        icon: const Icon(Icons.add),
-        label: const Text(
-          "+ ADD NEW CATEGORY",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ),
     );
   }
 
@@ -178,240 +152,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           ],
         ),
       ],
-    );
-  }
-
-  void _showAddCategoryDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final TextEditingController nameController = TextEditingController();
-        int selectedIconIndex = 0;
-        String selectedType = 'EXPENSE';
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: _themeService.cardBg,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              contentPadding: const EdgeInsets.all(20),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Text(
-                        'Add new category',
-                        style: TextStyle(
-                          color: _themeService.textMain,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Type:',
-                      style: TextStyle(
-                        color: _themeService.textMain,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTypeChip(
-                            label: 'INCOME',
-                            isSelected: selectedType == 'INCOME',
-                            onTap: () => setState(() => selectedType = 'INCOME'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildTypeChip(
-                            label: 'EXPENSE',
-                            isSelected: selectedType == 'EXPENSE',
-                            onTap: () => setState(() => selectedType = 'EXPENSE'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Name',
-                      style: TextStyle(
-                        color: _themeService.textMain,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        hintText: 'Untitled',
-                        hintStyle: TextStyle(color: _themeService.textSub),
-                        filled: true,
-                        fillColor: _themeService.cardBg,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: _themeService.textSub.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _themeService.primaryBlue),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Icon',
-                      style: TextStyle(
-                        color: _themeService.textMain,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _themeService.cardBg,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _themeService.textSub.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          for (int i = 0; i < _iconOptions.length; i++)
-                            GestureDetector(
-                              onTap: () => setState(() => selectedIconIndex = i),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: _categoryColors[i % _categoryColors.length]
-                                      .withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: selectedIconIndex == i
-                                        ? _themeService.primaryBlue
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  _iconOptions[i],
-                                  color: _categoryColors[i % _categoryColors.length],
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _themeService.textMain,
-                              side: BorderSide(
-                                color: _themeService.textSub.withValues(alpha: 0.4),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text(
-                              'CANCEL',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _themeService.primaryBlue,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: () {
-                              // TODO: save category to database
-                              // ignore: avoid_print
-                              print(
-                                'Save category: type=$selectedType, name=${nameController.text}, icon=${_iconOptions[selectedIconIndex]}',
-                              );
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text(
-                              'SAVE',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildTypeChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color:
-              isSelected ? _themeService.primaryBlue : _themeService.cardBg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? _themeService.primaryBlue
-                : _themeService.textSub.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : _themeService.textSub,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ),
-      ),
     );
   }
 
