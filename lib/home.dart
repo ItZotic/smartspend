@@ -24,6 +24,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final ThemeService _themeService = ThemeService();
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final DraggableScrollableController _draggableController =
+      DraggableScrollableController();
+
+  @override
+  void dispose() {
+    _draggableController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -378,6 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               DraggableScrollableSheet(
+                controller: _draggableController,
                 initialChildSize: 0.30,
                 minChildSize: 0.30,
                 maxChildSize: 0.9,
@@ -402,10 +411,25 @@ class _HomeScreenState extends State<HomeScreen> {
                             Center(
                               child: Container(
                                 margin: const EdgeInsets.only(top: 12),
-                                child: const Icon(
-                                  Icons.keyboard_arrow_up_rounded,
-                                  color: Colors.white54,
-                                  size: 32,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    final double targetSize =
+                                        _draggableController.size >= 0.5
+                                            ? 0.30
+                                            : 0.9;
+
+                                    _draggableController.animateTo(
+                                      targetSize,
+                                      duration:
+                                          const Duration(milliseconds: 300),
+                                      curve: Curves.easeOut,
+                                    );
+                                  },
+                                  child: const Icon(
+                                    Icons.keyboard_arrow_up_rounded,
+                                    color: Colors.white54,
+                                    size: 32,
+                                  ),
                                 ),
                               ),
                             ),
