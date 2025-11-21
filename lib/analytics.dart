@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:smartspend/screens/category_details_screen.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 
@@ -23,12 +22,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   DateTime _selectedMonth =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
 
-  DateTime get _startOfSelectedMonth =>
-      DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-
-  DateTime get _startOfNextMonth =>
-      DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
-
   void _changeMonth(int offset) {
     setState(() {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + offset, 1);
@@ -45,6 +38,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     if (dateField is DateTime) return dateField;
 
     return null;
+  }
+
+  bool _isInSelectedMonth(Map<String, dynamic> data) {
+    final date = _extractDate(data);
+    if (date == null) return false;
+    return date.year == _selectedMonth.year && date.month == _selectedMonth.month;
   }
 
   @override
@@ -71,27 +70,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
             child: SafeArea(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16.0,
                       vertical: 12.0,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Analytics",
-                          style: TextStyle(
-                            color: _themeService.textMain,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        _buildMonthSelector(),
-                      ],
+                    child: Text(
+                      "Analytics",
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -108,20 +99,82 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         }
 
                         final transactions = snapshot.data?.docs ?? [];
-                        final monthTransactions = transactions.where((doc) {
-                          final date = _extractDate(doc.data());
-                          if (date == null) return false;
-                          return !date.isBefore(_startOfSelectedMonth) &&
-                              date.isBefore(_startOfNextMonth);
-                        }).toList();
+                        final monthTransactions = transactions
+                            .where((doc) => _isInSelectedMonth(doc.data()))
+                            .toList();
 
-                        return SingleChildScrollView(
+                        if (monthTransactions.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.bar_chart_rounded,
+                                  size: 80,
+                                  color: _themeService.primaryBlue
+                                      .withValues(alpha: 0.5),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  "No analytics data yet",
+                                  style: TextStyle(
+                                    color: _themeService.textSub,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        double income = 0;
+                        double expenses = 0;
+                        double totalMagnitude = 0;
+                        final Map<String, double> categoryTotals = {};
+
+                        for (final doc in monthTransactions) {
+                          final data = doc.data();
+                          final double amount =
+                              (data['amount'] as num?)?.toDouble() ?? 0;
+                          final String category =
+                              (data['category'] as String?)?.trim().isNotEmpty == true
+                                  ? (data['category'] as String).trim()
+                                  : 'Uncategorized';
+
+                          if (amount >= 0) {
+                            income += amount;
+                          } else {
+                            expenses += amount.abs();
+                          }
+
+                          final value = amount.abs();
+                          totalMagnitude += value;
+                          categoryTotals[category] =
+                              (categoryTotals[category] ?? 0) + value;
+                        }
+
+                        final double netTotal = income - expenses;
+
+                        return ListView(
                           controller: widget.scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: _buildAnalyticsBody(monthTransactions),
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            _buildMonthSelector(),
+                            const SizedBox(height: 16),
+                            _buildSummaryCards(
+                              income: income,
+                              expenses: expenses,
+                              total: netTotal,
+                            ),
+                            const SizedBox(height: 20),
+                            _buildDonutChart(
+                              categoryTotals: categoryTotals,
+                              total: totalMagnitude,
+                            ),
+                            const SizedBox(height: 20),
+                            _buildCategoryList(categoryTotals: categoryTotals),
+                            const SizedBox(height: 80),
+                          ],
                         );
                       },
                     ),
@@ -132,91 +185,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildAnalyticsBody(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> monthTransactions,
-  ) {
-    double income = 0;
-    double expenses = 0;
-    final Map<String, double> expenseCategoryTotals = {};
-
-    for (final doc in monthTransactions) {
-      final data = doc.data();
-      final double amount = (data['amount'] as num?)?.toDouble() ?? 0;
-      final String type = (data['type'] as String?)?.toLowerCase() ?? '';
-      final String category =
-          (data['category'] as String?)?.trim().isNotEmpty == true
-              ? (data['category'] as String).trim()
-              : 'Uncategorized';
-
-      if (type == 'income') {
-        income += amount.abs();
-      } else if (type == 'expense') {
-        final value = amount.abs();
-        expenses += value;
-        expenseCategoryTotals[category] =
-            (expenseCategoryTotals[category] ?? 0) + value;
-      } else {
-        if (amount >= 0) {
-          income += amount;
-        } else {
-          final value = amount.abs();
-          expenses += value;
-          expenseCategoryTotals[category] =
-              (expenseCategoryTotals[category] ?? 0) + value;
-        }
-      }
-    }
-
-    final double netTotal = income - expenses;
-    final double totalExpensesForChart =
-        expenseCategoryTotals.values.fold<double>(0, (sum, value) => sum + value);
-
-    if (monthTransactions.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 32),
-        child: Column(
-          children: [
-            Icon(
-              Icons.bar_chart_rounded,
-              size: 80,
-              color: _themeService.primaryBlue.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "No analytics data yet",
-              style: TextStyle(
-                color: _themeService.textSub,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildSummaryCards(
-          income: income,
-          expenses: expenses,
-          total: netTotal,
-        ),
-        const SizedBox(height: 20),
-        _buildDonutChart(
-          expenseTotals: expenseCategoryTotals,
-          totalExpenses: totalExpensesForChart,
-        ),
-        const SizedBox(height: 20),
-        _buildCategoryList(
-          expenseTotals: expenseCategoryTotals,
-          totalExpenses: totalExpensesForChart,
-        ),
-        const SizedBox(height: 40),
-      ],
     );
   }
 
@@ -259,7 +227,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     required double income,
     required double expenses,
     required double total,
-  }) { 
+  }) {
     final cardColor = _themeService.cardBg;
     final textColor = _themeService.textMain;
 
@@ -324,8 +292,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildDonutChart({
-    required Map<String, double> expenseTotals,
-    required double totalExpenses,
+    required Map<String, double> categoryTotals,
+    required double total,
   }) {
     final cardColor = _themeService.cardBg;
     final textColor = _themeService.textMain;
@@ -340,45 +308,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       Colors.cyanAccent.shade400,
     ];
 
-    final sections = expenseTotals.entries.toList()
+    final sections = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-
-    if (sections.isEmpty || totalExpenses == 0) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Spending Breakdown",
-              style: TextStyle(
-                color: textColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: Text(
-                "No expense data this month",
-                style: TextStyle(color: _themeService.textSub),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -406,26 +337,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 220,
+            height: 200,
             child: PieChart(
               PieChartData(
-                sectionsSpace: 4,
-                centerSpaceRadius: 70,
+                sectionsSpace: 2,
+                centerSpaceRadius: 60,
                 startDegreeOffset: -90,
                 sections: [
                   for (int i = 0; i < sections.length; i++)
                     PieChartSectionData(
                       value: sections[i].value,
                       color: palette[i % palette.length],
-                      radius: 70,
-                      title:
-                          '${(sections[i].value / totalExpenses * 100).toStringAsFixed(0)}%',
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                      titlePositionPercentageOffset: 0.6,
+                      radius: 60,
+                      title: '',
                     ),
                 ],
               ),
@@ -441,7 +365,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   color: palette[i % palette.length],
                   label: sections[i].key,
                   value: sections[i].value,
-                  total: totalExpenses,
+                  total: total,
                 ),
             ],
           ),
@@ -488,11 +412,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildCategoryList({
-    required Map<String, double> expenseTotals,
-    required double totalExpenses,
+    required Map<String, double> categoryTotals,
   }) {
-    final entries = expenseTotals.entries.toList()
+    final entries = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
+    final total = entries.fold<double>(0, (sum, item) => sum + item.value);
     final textColor = _themeService.textMain;
 
     return Container(
@@ -521,88 +445,74 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           ),
           const SizedBox(height: 12),
           for (final entry in entries)
-            InkWell(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => CategoryDetailsScreen(
-                      categoryName: entry.key,
-                      selectedMonth: _selectedMonth,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _themeService.primaryBlue.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.category_rounded,
+                      color: Colors.white,
+                      size: 20,
                     ),
                   ),
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _themeService.primaryBlue.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.category_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.key,
-                            style: TextStyle(
-                              color: textColor,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
-                              value:
-                                  totalExpenses == 0 ? 0 : entry.value / totalExpenses,
-                              backgroundColor:
-                                  _themeService.textSub.withValues(alpha: 0.1),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                _themeService.primaryBlue,
-                              ),
-                              minHeight: 6,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          NumberFormat.currency(symbol: '₱').format(entry.value),
+                          entry.key,
                           style: TextStyle(
                             color: textColor,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        Text(
-                          totalExpenses == 0
-                              ? '0%'
-                              : '${(entry.value / totalExpenses * 100).toStringAsFixed(1)}%',
-                          style: TextStyle(
-                            color: _themeService.textSub,
-                            fontSize: 12,
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: total == 0 ? 0 : entry.value / total,
+                            backgroundColor: _themeService.textSub.withValues(alpha: 0.1),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              _themeService.primaryBlue,
+                            ),
+                            minHeight: 6,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        NumberFormat.currency(symbol: '₱')
+                            .format(entry.value),
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        total == 0
+                            ? '0%'
+                            : '${(entry.value / total * 100).toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          color: _themeService.textSub,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
         ],
