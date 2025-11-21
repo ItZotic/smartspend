@@ -390,9 +390,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            onPressed: () {
-              // TODO: open budget editor
-            },
+            onPressed: () => _showSetBudgetDialog(category),
             child: const Text(
               "EDIT",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -502,9 +500,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            onPressed: () {
-              // TODO: open budget editor
-            },
+            onPressed: () => _showSetBudgetDialog(category),
             child: const Text(
               "SET BUDGET",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -512,6 +508,171 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showSetBudgetDialog(String categoryName) async {
+    final TextEditingController limitController = TextEditingController(
+      text: _budgetLimits[categoryName]?.toString() ?? '',
+    );
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          backgroundColor: _themeService.cardBg,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Text(
+                    'Set budget',
+                    style: TextStyle(
+                      color: _themeService.textMain,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _themeService.cardBg,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _themeService.textSub.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _themeService.primaryBlue.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.category_rounded,
+                          color: _themeService.primaryBlue,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          categoryName,
+                          style: TextStyle(
+                            color: _themeService.textMain,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Limit',
+                  style: TextStyle(
+                    color: _themeService.textMain,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: limitController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    hintText: '0.00',
+                    filled: true,
+                    fillColor: _themeService.cardBg,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _themeService.textSub.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: _themeService.primaryBlue),
+                    ),
+                  ),
+                  style: TextStyle(color: _themeService.textMain),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Month: $_monthLabel',
+                  style: TextStyle(
+                    color: _themeService.textSub,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _themeService.textMain,
+                          side: BorderSide(
+                            color: _themeService.textSub.withValues(alpha: 0.3),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text(
+                          'CANCEL',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _themeService.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          final entered = double.tryParse(limitController.text.trim());
+                          setState(() {
+                            _budgetedCategories.add(categoryName);
+                            _budgetLimits[categoryName] = entered ?? 0;
+                            _spentAmounts.putIfAbsent(categoryName, () => 0);
+                          });
+                          // TODO: Persist budget limit changes
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text(
+                          'SET',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

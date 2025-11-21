@@ -44,6 +44,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     Color(0xFF6ED1FF),
   ];
 
+  final List<IconData> _categoryIcons = const [
+    Icons.restaurant,
+    Icons.directions_car,
+    Icons.home_rounded,
+    Icons.shopping_bag,
+    Icons.school,
+    Icons.favorite,
+    Icons.flight_takeoff,
+    Icons.savings,
+    Icons.sports_esports,
+  ];
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -93,7 +105,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             title: "Expense categories",
                             categories: _expenseCategories,
                           ),
-                          const SizedBox(height: 120),
+                          const SizedBox(height: 24),
+                          _buildAddCategoryButton(),
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),
@@ -102,25 +116,33 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               ),
             ),
           ),
-          floatingActionButton: Padding(
-            padding: const EdgeInsets.only(bottom: 80.0),
-            child: FloatingActionButton.extended(
-              backgroundColor: _themeService.primaryBlue,
-              onPressed: () {
-                // TODO: open Add Category page
-              },
-              label: const Text(
-                "ADD NEW CATEGORY",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              icon: const Icon(Icons.add, color: Colors.white),
-            ),
-          ),
         );
       },
+    );
+  }
+
+  Widget _buildAddCategoryButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _themeService.primaryBlue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+        ),
+        onPressed: _showAddCategoryDialog,
+        icon: const Icon(Icons.add),
+        label: const Text(
+          "ADD NEW CATEGORY",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
     );
   }
 
@@ -205,6 +227,211 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showAddCategoryDialog() async {
+    final TextEditingController nameController = TextEditingController();
+    int selectedIconIndex = 0;
+    String selectedType = 'EXPENSE';
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          backgroundColor: _themeService.cardBg,
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Text(
+                        'Add new category',
+                        style: TextStyle(
+                          color: _themeService.textMain,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Type:',
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        for (final type in ['INCOME', 'EXPENSE'])
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: TextButton(
+                                style: TextButton.styleFrom(
+                                  backgroundColor:
+                                      selectedType == type ? _themeService.primaryBlue : _themeService.cardBg,
+                                  foregroundColor:
+                                      selectedType == type ? Colors.white : _themeService.textSub,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: BorderSide(
+                                      color: _themeService.textSub.withValues(alpha: 0.25),
+                                    ),
+                                  ),
+                                ),
+                                onPressed: () => setState(() => selectedType = type),
+                                child: Text(
+                                  type,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Name',
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        hintText: 'Untitled',
+                        filled: true,
+                        fillColor: _themeService.cardBg,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: _themeService.textSub.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: _themeService.primaryBlue),
+                        ),
+                      ),
+                      style: TextStyle(color: _themeService.textMain),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Icon',
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _themeService.cardBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _themeService.textSub.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          for (int i = 0; i < _categoryIcons.length; i++)
+                            GestureDetector(
+                              onTap: () => setState(() => selectedIconIndex = i),
+                              child: Container(
+                                width: 52,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _categoryColors[i % _categoryColors.length]
+                                      .withValues(alpha: 0.15),
+                                  border: Border.all(
+                                    color: selectedIconIndex == i
+                                        ? _themeService.primaryBlue
+                                        : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Icon(
+                                  _categoryIcons[i],
+                                  color: _categoryColors[i % _categoryColors.length],
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _themeService.textMain,
+                              side: BorderSide(
+                                color: _themeService.textSub.withValues(alpha: 0.3),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text(
+                              'CANCEL',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _themeService.primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              final name = nameController.text.trim();
+                              // TODO: Save new category to data store
+                              debugPrint('Saving category: type=$selectedType, name=$name, iconIndex=$selectedIconIndex');
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text(
+                              'SAVE',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
