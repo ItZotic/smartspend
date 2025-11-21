@@ -171,7 +171,7 @@ class _ExportScreenState extends State<ExportScreen> {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -210,11 +210,11 @@ class _ExportScreenState extends State<ExportScreen> {
                               color: cardBg,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: primaryBlue.withOpacity(0.3),
+                                color: primaryBlue.withValues(alpha: 0.3),
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: primaryBlue.withOpacity(0.05),
+                                  color: primaryBlue.withValues(alpha: 0.05),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 ),
@@ -348,7 +348,7 @@ class _ExportScreenState extends State<ExportScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 elevation: 5,
-                                shadowColor: primaryBlue.withOpacity(0.4),
+                                shadowColor: primaryBlue.withValues(alpha: 0.4),
                               ),
                               child: _isExporting
                                   ? const CircularProgressIndicator(

@@ -48,8 +48,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
 
-  final DateTime _currentMonth = DateTime.now();
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -120,7 +118,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         IconButton(
           icon: Icon(
             Icons.arrow_back_ios,
-            color: _themeService.textMain.withOpacity(0.7),
+            color: _themeService.textMain.withValues(alpha: 0.7),
             size: 18,
           ),
           onPressed: () {},
@@ -136,7 +134,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         IconButton(
           icon: Icon(
             Icons.arrow_forward_ios,
-            color: _themeService.textMain.withOpacity(0.7),
+            color: _themeService.textMain.withValues(alpha: 0.7),
             size: 18,
           ),
           onPressed: () {},
@@ -157,9 +155,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-              _themeService.isDarkMode ? 0.3 : 0.05,
-            ),
+            color: Colors.black
+                .withValues(alpha: _themeService.isDarkMode ? 0.3 : 0.05),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -193,7 +190,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Container(
             width: 1,
             height: 40,
-            color: _themeService.textSub.withOpacity(0.2),
+            color: _themeService.textSub.withValues(alpha: 0.2),
           ),
           Column(
             children: [
@@ -277,7 +274,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -288,7 +285,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withOpacity(0.1),
+              color: _themeService.primaryBlue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(iconData, color: _themeService.primaryBlue),
@@ -312,7 +309,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
                 side: BorderSide(
-                  color: _themeService.primaryBlue.withOpacity(0.3),
+                  color: _themeService.primaryBlue.withValues(alpha: 0.3),
                 ),
               ),
             ),
@@ -353,7 +350,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: _themeService.primaryBlue.withOpacity(0.1),
+                    backgroundColor: _themeService.primaryBlue.withValues(alpha: 0.1),
                     child: Icon(iconData, color: _themeService.primaryBlue),
                   ),
                   const SizedBox(width: 12),
@@ -382,7 +379,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(
-                      color: _themeService.textSub.withOpacity(0.3),
+                      color: _themeService.textSub.withValues(alpha: 0.3),
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),

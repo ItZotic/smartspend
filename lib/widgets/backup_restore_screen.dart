@@ -249,10 +249,10 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
                 color: _themeService.cardBg,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(
-                      _themeService.isDarkMode ? 0.3 : 0.05,
-                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: _themeService.isDarkMode ? 0.3 : 0.05,
+                      ),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -287,7 +287,7 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
           Icon(
             Icons.cloud_sync_outlined,
             size: 100,
-            color: _themeService.primaryBlue.withOpacity(0.8),
+            color: _themeService.primaryBlue.withValues(alpha: 0.8),
           ),
           const SizedBox(height: 30),
 
@@ -348,14 +348,16 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       decoration: BoxDecoration(
         color: _themeService.cardBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _themeService.primaryBlue.withOpacity(0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: _themeService.primaryBlue.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+          border: Border.all(
+            color: _themeService.primaryBlue.withValues(alpha: 0.2),
           ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: _themeService.primaryBlue.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,17 +416,17 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
           backgroundColor: bg,
           foregroundColor: text,
           elevation: outlined ? 0 : 5,
-          shadowColor: outlined
-              ? null
-              : _themeService.primaryBlue.withOpacity(0.4),
+            shadowColor: outlined
+                ? null
+                : _themeService.primaryBlue.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: outlined
-                ? BorderSide(
-                    color: _themeService.primaryBlue.withOpacity(0.5),
-                    width: 1.5,
-                  )
-                : BorderSide.none,
+              side: outlined
+                  ? BorderSide(
+                      color: _themeService.primaryBlue.withValues(alpha: 0.5),
+                      width: 1.5,
+                    )
+                  : BorderSide.none,
           ),
         ),
         child: Text(

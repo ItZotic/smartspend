@@ -52,7 +52,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           Icon(
                             Icons.bar_chart_rounded,
                             size: 80,
-                            color: _themeService.primaryBlue.withOpacity(0.5),
+                            color: _themeService.primaryBlue.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 16),
                           Text(

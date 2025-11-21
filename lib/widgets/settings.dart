@@ -45,13 +45,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: _themeService.cardBg,
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(
-                                    _themeService.isDarkMode ? 0.3 : 0.05,
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha:
+                                          _themeService.isDarkMode ? 0.3 : 0.05,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
                               ],
                             ),
                             child: Icon(
@@ -136,13 +137,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: _themeService.cardBg,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
-                              BoxShadow(
-                                color: _themeService.primaryBlue.withOpacity(
-                                  0.05,
+                                BoxShadow(
+                                  color: _themeService.primaryBlue
+                                      .withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
                             ],
                           ),
                           child: Padding(
@@ -169,14 +169,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ),
-                              trailing: Transform.scale(
-                                scale: 0.8,
-                                child: Switch(
-                                  value: _remindEveryday,
-                                  activeColor: Colors.white,
-                                  activeTrackColor: _themeService.primaryBlue,
-                                  inactiveThumbColor: Colors.grey.shade400,
-                                  inactiveTrackColor: Colors.grey.shade700,
+                                trailing: Transform.scale(
+                                  scale: 0.8,
+                                  child: Switch(
+                                    value: _remindEveryday,
+                                    activeThumbColor: Colors.white,
+                                    activeTrackColor: _themeService.primaryBlue,
+                                    inactiveThumbColor: Colors.grey.shade400,
+                                    inactiveTrackColor: Colors.grey.shade700,
                                   onChanged: (bool value) =>
                                       setState(() => _remindEveryday = value),
                                 ),
@@ -208,10 +208,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildIconContainer(IconData icon) {
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: _themeService.primaryBlue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
+        decoration: BoxDecoration(
+          color: _themeService.primaryBlue.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
       child: Icon(icon, color: _themeService.primaryBlue, size: 24),
     );
   }
@@ -243,13 +243,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: _themeService.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(
-              _themeService.isDarkMode ? 0.2 : 0.05,
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: _themeService.isDarkMode ? 0.2 : 0.05,
+              ),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
         ],
       ),
       child: ListTile(
@@ -305,31 +305,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: options.map((option) {
-              return RadioListTile<String>(
-                title: Text(
-                  option,
-                  style: TextStyle(
-                    color: _themeService.isDarkMode
-                        ? Colors.white70
-                        : Colors.black87,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: options.map((option) {
+                final isSelected = option == currentVal;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    option,
+                    style: TextStyle(
+                      color: _themeService.isDarkMode
+                          ? Colors.white70
+                          : Colors.black87,
+                    ),
                   ),
-                ),
-                value: option,
-                groupValue: currentVal,
-                activeColor: _themeService.primaryBlue,
-                contentPadding: EdgeInsets.zero,
-                onChanged: (value) {
-                  if (value != null) {
-                    onSelect(value);
+                  trailing: Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: _themeService.primaryBlue,
+                  ),
+                  onTap: () {
+                    onSelect(option);
                     Navigator.pop(context);
-                  }
-                },
-              );
-            }).toList(),
-          ),
+                  },
+                );
+              }).toList(),
+            ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -391,22 +393,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildRadio(String title, int val) {
-    return RadioListTile<int>(
+    final isSelected = _themeService.decimalPlaces == val;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
       title: Text(
         title,
         style: TextStyle(
           color: _themeService.isDarkMode ? Colors.white70 : Colors.black87,
         ),
       ),
-      value: val,
-      groupValue: _themeService.decimalPlaces,
-      activeColor: _themeService.primaryBlue,
-      contentPadding: EdgeInsets.zero,
-      onChanged: (value) {
-        if (value != null) {
-          _themeService.setDecimalPlaces(value);
-          Navigator.pop(context);
-        }
+      trailing: Icon(
+        isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+        color: _themeService.primaryBlue,
+      ),
+      onTap: () {
+        _themeService.setDecimalPlaces(val);
+        Navigator.pop(context);
       },
     );
   }
@@ -436,38 +438,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
               itemCount: _themeService.currencies.length,
               itemBuilder: (context, index) {
                 final currency = _themeService.currencies[index];
-                return RadioListTile<String>(
-                  title: Text(
-                    currency['name']!,
-                    style: TextStyle(
-                      color: _themeService.isDarkMode
-                          ? Colors.white70
-                          : Colors.black87,
+                  final isSelected = _themeService.currencyName == currency['name'];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      currency['name']!,
+                      style: TextStyle(
+                        color: _themeService.isDarkMode
+                            ? Colors.white70
+                            : Colors.black87,
+                      ),
                     ),
-                  ),
-                  secondary: Text(
-                    currency['symbol']!,
-                    style: TextStyle(
-                      color: _themeService.primaryBlue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          currency['symbol']!,
+                          style: TextStyle(
+                            color: _themeService.primaryBlue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          isSelected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          color: _themeService.primaryBlue,
+                        ),
+                      ],
                     ),
-                  ),
-                  value: currency['name']!,
-                  groupValue: _themeService.currencyName,
-                  activeColor: _themeService.primaryBlue,
-                  contentPadding: EdgeInsets.zero,
-                  onChanged: (value) {
-                    if (value != null) {
+                    onTap: () {
                       _themeService.setCurrency(
                         currency['name']!,
                         currency['symbol']!,
                       );
                       Navigator.pop(context);
-                    }
-                  },
-                );
-              },
+                    },
+                  );
+                },
             ),
           ),
           actions: [

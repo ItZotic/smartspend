@@ -124,12 +124,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             uid: user!.uid,
             type: type,
           ),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData)
-              return const Center(child: CircularProgressIndicator());
-            final categoryDocs = snapshot.data!.docs;
-            return Column(
-              children: categoryDocs
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final categoryDocs = snapshot.data!.docs;
+              return Column(
+                children: categoryDocs
                   .map((doc) => _buildCategoryRow(doc))
                   .toList(),
             );
@@ -152,10 +153,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         color: _themeService.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(
-              _themeService.isDarkMode ? 0.2 : 0.03,
-            ),
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: _themeService.isDarkMode ? 0.2 : 0.03,
+              ),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -165,10 +166,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
+              decoration: BoxDecoration(
+                color: _themeService.primaryBlue.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
             child: Icon(iconData, color: _themeService.primaryBlue, size: 20),
           ),
           const SizedBox(width: 12),

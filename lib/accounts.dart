@@ -86,22 +86,21 @@ class _AccountsScreenState extends State<AccountsScreen> {
       decoration: BoxDecoration(
         color: _themeService.cardBg,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(
-              _themeService.isDarkMode ? 0.3 : 0.05,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black
+                  .withValues(alpha: _themeService.isDarkMode ? 0.3 : 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
             ),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
+          ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withOpacity(0.1),
+              color: _themeService.primaryBlue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: _themeService.primaryBlue, size: 28),
