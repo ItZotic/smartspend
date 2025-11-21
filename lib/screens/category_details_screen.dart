@@ -25,7 +25,8 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final User? _user = FirebaseAuth.instance.currentUser;
 
-  DateTime get _monthStart => DateTime(widget.selectedMonth.year, widget.selectedMonth.month, 1);
+  DateTime get _monthStart =>
+      DateTime(widget.selectedMonth.year, widget.selectedMonth.month, 1);
 
   DateTime get _nextMonthStart =>
       DateTime(widget.selectedMonth.year, widget.selectedMonth.month + 1, 1);
@@ -102,9 +103,12 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                       ),
                     )
                   : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream: _firestoreService.streamTransactions(uid: _user!.uid),
+                      stream: _firestoreService.streamTransactions(
+                        uid: _user.uid,
+                      ),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return Center(
                             child: CircularProgressIndicator(
                               color: _themeService.primaryBlue,
@@ -119,23 +123,29 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
 
                         double totalMonthExpenses = 0;
                         double categoryExpenses = 0;
-                        final List<QueryDocumentSnapshot<Map<String, dynamic>>> categoryTxns = [];
+                        final List<
+                            QueryDocumentSnapshot<Map<String, dynamic>>>
+                          categoryTxns = [];
 
                         for (final doc in monthTransactions) {
                           final data = doc.data();
-                          final double amount = (data['amount'] as num?)?.toDouble() ?? 0;
-                          final type = (data['type'] as String?)?.toLowerCase();
+                          final double amount =
+                              (data['amount'] as num?)?.toDouble() ?? 0.0;
+                          final type =
+                              (data['type'] as String?)?.toLowerCase();
                           final String category =
-                              (data['category'] as String?)?.trim().isNotEmpty == true
+                              (data['category'] as String?)?.trim().isNotEmpty ==
+                                      true
                                   ? (data['category'] as String).trim()
                                   : 'Uncategorized';
 
                           final isExpense = type == 'expense' || amount < 0;
 
                           if (isExpense) {
-                            final expenseValue = amount.abs();
+                            final double expenseValue = amount.abs();
                             totalMonthExpenses += expenseValue;
-                            if (category.toLowerCase() == widget.categoryName.toLowerCase()) {
+                            if (category.toLowerCase() ==
+                                widget.categoryName.toLowerCase()) {
                               categoryExpenses += expenseValue;
                               categoryTxns.add(doc);
                             }
@@ -143,17 +153,20 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                         }
 
                         categoryTxns.sort((a, b) {
-                          final dateA = _extractDate(a.data()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-                          final dateB = _extractDate(b.data()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+                          final dateA = _extractDate(a.data()) ??
+                              DateTime.fromMillisecondsSinceEpoch(0);
+                          final dateB = _extractDate(b.data()) ??
+                              DateTime.fromMillisecondsSinceEpoch(0);
                           return dateB.compareTo(dateA);
                         });
 
-                        final percent = totalMonthExpenses == 0
-                            ? 0
-                            : (categoryExpenses / totalMonthExpenses * 100);
+                        final double percent = totalMonthExpenses == 0
+                            ? 0.0
+                            : (categoryExpenses / totalMonthExpenses * 100.0);
 
                         return SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 12, 16, 24),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -208,14 +221,14 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                 width: 120,
                 child: PieChart(
                   PieChartData(
-                    sectionsSpace: 0,
-                    centerSpaceRadius: 40,
-                    startDegreeOffset: -90,
+                    sectionsSpace: 0.0,
+                    centerSpaceRadius: 40.0,
+                    startDegreeOffset: -90.0,
                     sections: [
                       PieChartSectionData(
                         color: accentColor,
-                        value: percent,
-                        radius: 20,
+                        value: percent, // already double
+                        radius: 20.0,
                         title: '${percent.toStringAsFixed(1)}%',
                         titleStyle: const TextStyle(
                           color: Colors.white,
@@ -224,9 +237,12 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                         ),
                       ),
                       PieChartSectionData(
-                        color: _themeService.textSub.withValues(alpha: 0.2),
-                        value: (100 - percent).clamp(0, 100),
-                        radius: 18,
+                        color: _themeService.textSub
+                            .withValues(alpha: 0.2),
+                        value: ((100.0 - percent)
+                                .clamp(0.0, 100.0))
+                            .toDouble(),
+                        radius: 18.0,
                         title: '',
                       ),
                     ],
@@ -300,7 +316,8 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
       );
     }
 
-    final Map<DateTime, List<QueryDocumentSnapshot<Map<String, dynamic>>>> grouped = {};
+    final Map<DateTime,
+        List<QueryDocumentSnapshot<Map<String, dynamic>>>> grouped = {};
 
     for (final doc in categoryTxns) {
       final data = doc.data();
@@ -344,7 +361,8 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
 
   Widget _buildTransactionTile(Map<String, dynamic> data) {
     final date = _extractDate(data) ?? DateTime.now();
-    final double amount = (data['amount'] as num?)?.toDouble() ?? 0;
+    final double amount =
+        (data['amount'] as num?)?.toDouble() ?? 0.0;
     final type = (data['type'] as String?)?.toLowerCase();
     final bool isExpense = type == 'expense' || amount < 0;
     final double expenseValue = amount.abs();
@@ -376,11 +394,13 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _themeService.primaryBlue.withValues(alpha: 0.12),
+              color: _themeService.primaryBlue
+                  .withValues(alpha: 0.12),
             ),
             child: Icon(
               isExpense ? Icons.remove_circle : Icons.add_circle,
-              color: isExpense ? Colors.redAccent : Colors.greenAccent.shade400,
+              color:
+                  isExpense ? Colors.redAccent : Colors.greenAccent.shade400,
             ),
           ),
           const SizedBox(width: 12),
@@ -409,7 +429,8 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
           Text(
             _formatCurrency(isExpense ? -expenseValue : expenseValue),
             style: TextStyle(
-              color: isExpense ? Colors.redAccent : Colors.greenAccent.shade400,
+              color:
+                  isExpense ? Colors.redAccent : Colors.greenAccent.shade400,
               fontWeight: FontWeight.w800,
             ),
           ),

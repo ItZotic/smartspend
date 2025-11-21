@@ -102,7 +102,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           )
                         : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                             stream: _firestoreService
-                                .streamTransactions(uid: _user!.uid),
+                                .streamTransactions(uid: _user.uid),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState ==
                                   ConnectionState.waiting) {
