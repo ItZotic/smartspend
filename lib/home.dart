@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/widgets/add_transaction.dart';
 import 'package:smartspend/widgets/main_menu_drawers.dart';
+import 'package:smartspend/widgets/subscriptions_screen.dart';
+import 'package:smartspend/widgets/shop_screen.dart';
 import 'package:smartspend/services/theme_service.dart';
+import 'package:smartspend/widgets/calendar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ScrollController? scrollController;
@@ -27,10 +30,110 @@ class _HomeScreenState extends State<HomeScreen> {
   final DraggableScrollableController _draggableController =
       DraggableScrollableController();
 
+  // State for selected account (null means "All Accounts")
+  String? _selectedAccountName;
+  String? _selectedAccountId;
+
   @override
   void dispose() {
     _draggableController.dispose();
     super.dispose();
+  }
+
+  void _showAccountPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _themeService.sheetColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Select Account",
+                style: TextStyle(
+                  color: _themeService.textMain,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('accounts')
+                      .where('uid', isEqualTo: user!.uid)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData)
+                      return const Center(child: CircularProgressIndicator());
+                    final docs = snapshot.data!.docs;
+
+                    // Add "All Accounts" option
+                    final allOption = ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: _themeService.primaryBlue.withOpacity(
+                          0.1,
+                        ),
+                        child: Icon(
+                          Icons.account_balance,
+                          color: _themeService.primaryBlue,
+                        ),
+                      ),
+                      title: Text(
+                        "All Accounts",
+                        style: TextStyle(color: _themeService.textMain),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _selectedAccountName = null;
+                          _selectedAccountId = null;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+
+                    return ListView(
+                      children: [
+                        allOption,
+                        ...docs.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: _themeService.primaryBlue
+                                  .withOpacity(0.1),
+                              child: Icon(
+                                Icons.credit_card,
+                                color: _themeService.primaryBlue,
+                              ),
+                            ),
+                            title: Text(
+                              data['name'],
+                              style: TextStyle(color: _themeService.textMain),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _selectedAccountName = data['name'];
+                                _selectedAccountId = doc.id;
+                              });
+                              Navigator.pop(context);
+                            },
+                          );
+                        }),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -69,18 +172,15 @@ class _HomeScreenState extends State<HomeScreen> {
               Positioned(
                 top: -60,
                 left: -60,
-                  child: _buildBlurCircle(
-                    primaryBlue.withValues(alpha: 0.2),
-                    300,
-                  ),
+                child: _buildBlurCircle(primaryBlue.withOpacity(0.2), 300),
               ),
               Positioned(
                 top: 200,
                 right: -80,
-                  child: _buildBlurCircle(
-                    Colors.cyanAccent.withValues(alpha: 0.15),
-                    250,
-                  ),
+                child: _buildBlurCircle(
+                  Colors.cyanAccent.withOpacity(0.15),
+                  250,
+                ),
               ),
 
               SafeArea(
@@ -92,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const SizedBox(height: 16),
 
+                      // Header
                       Row(
                         children: [
                           GestureDetector(
@@ -104,9 +205,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(
-                                       alpha: _themeService.isDarkMode ? 0.3 : 0.05,
-                                      ),
+                                    color: Colors.black.withOpacity(
+                                      _themeService.isDarkMode ? 0.3 : 0.05,
+                                    ),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -144,11 +245,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 width: 2,
                               ),
                               boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 5),
-                                  ),
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
                               ],
                             ),
                             child: CircleAvatar(
@@ -167,30 +268,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 32),
 
-                      // Balance Card (Kept blue in both modes)
+                      // Balance Card
+                      // We need to determine if we are fetching ALL transactions or ONE account's transactions
                       StreamBuilder<QuerySnapshot>(
-                        stream: _firestoreService.streamTransactions(
-                          uid: user!.uid,
-                        ),
+                        stream: _selectedAccountName == null
+                            ? _firestoreService.streamTransactions(
+                                uid: user!.uid,
+                              ) // All
+                            : FirebaseFirestore.instance
+                                  .collection(
+                                    'transactions',
+                                  ) // Filtered by account name
+                                  .where('uid', isEqualTo: user!.uid)
+                                  .where(
+                                    'account',
+                                    isEqualTo: _selectedAccountName,
+                                  )
+                                  .orderBy('createdAt', descending: true)
+                                  .snapshots(),
                         builder: (context, snapshot) {
-                          double totalBalance = 0;
+                          double displayBalance = 0;
+
+                          // If "All Accounts", sum transactions OR fetch all accounts and sum balances
+                          // For simplicity with current structure: sum transactions shown
                           if (snapshot.hasData) {
-                            double income = 0;
-                            double expense = 0;
                             for (var doc in snapshot.data!.docs) {
                               final data = doc.data() as Map<String, dynamic>;
                               final amt =
                                   (data['amount'] as num?)?.toDouble() ?? 0.0;
-                              if ((data['type'] ?? '')
-                                      .toString()
-                                      .toLowerCase() ==
-                                  'income') {
-                                income += amt.abs();
-                              } else {
-                                expense += amt.abs();
-                              }
+                              // If type is expense, subtract? Or is amount stored signed?
+                              // Based on add_transaction, Expense is stored as negative.
+                              displayBalance += amt;
                             }
-                            totalBalance = income - expense;
                           }
 
                           return Container(
@@ -204,13 +313,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 end: Alignment.bottomRight,
                               ),
                               boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFF1565C0,
-                                    ).withValues(alpha: 0.4),
-                                    blurRadius: 25,
-                                    offset: const Offset(0, 15),
-                                  ),
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF1565C0,
+                                  ).withOpacity(0.4),
+                                  blurRadius: 25,
+                                  offset: const Offset(0, 15),
+                                ),
                               ],
                             ),
                             child: Stack(
@@ -242,18 +351,45 @@ class _HomeScreenState extends State<HomeScreen> {
                                             color: Colors.white70,
                                             size: 32,
                                           ),
-                                          Container(
-                                            width: 40,
-                                            height: 28,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.2,
+                                          // ✅ ACCOUNT PICKER BUTTON
+                                          GestureDetector(
+                                            onTap: _showAccountPicker,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 6,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(
+                                                  0.2,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: Colors.white38,
+                                                  width: 1,
+                                                ),
                                               ),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                              border: Border.all(
-                                                color: Colors.white38,
-                                                width: 1,
+                                              child: Row(
+                                                children: [
+                                                  Text(
+                                                    _selectedAccountName ??
+                                                        "All Accounts",
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  const Icon(
+                                                    Icons.arrow_drop_down,
+                                                    color: Colors.white,
+                                                    size: 16,
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ),
@@ -263,18 +399,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
-                                            "Total Balance",
-                                            style: TextStyle(
+                                          Text(
+                                            _selectedAccountName == null
+                                                ? "Total Balance"
+                                                : "$_selectedAccountName Balance",
+                                            style: const TextStyle(
                                               color: Colors.white70,
                                               fontSize: 14,
                                             ),
                                           ),
                                           const SizedBox(height: 6),
-                                          // ✅ FIXED: Uses ThemeService formatter
                                           Text(
                                             _themeService.formatCurrency(
-                                              totalBalance,
+                                              displayBalance,
                                             ),
                                             style: const TextStyle(
                                               color: Colors.white,
@@ -319,6 +456,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 32),
 
+                      // Activities
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -358,25 +496,48 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
                           _buildGlassActivityBtn(
-                            Icons.swap_horiz,
-                            "Transfer",
+                            Icons.subscriptions_outlined,
+                            "Subs",
                             activityBoxColor,
                             primaryBlue,
-                            () {},
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SubscriptionsScreen(),
+                                ),
+                              );
+                            },
                           ),
+
                           _buildGlassActivityBtn(
-                            Icons.file_download_outlined,
-                            "Withdraw",
+                            Icons.calendar_month,
+                            "Calendar",
                             activityBoxColor,
                             primaryBlue,
-                            () {},
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const CalendarScreen(),
+                                ),
+                              );
+                            },
                           ),
+
                           _buildGlassActivityBtn(
                             Icons.shopping_bag_outlined,
                             "Shop",
                             activityBoxColor,
                             primaryBlue,
-                            () {},
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ShopScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -385,130 +546,139 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
+              // Draggable Sheet
               DraggableScrollableSheet(
                 controller: _draggableController,
                 initialChildSize: 0.30,
                 minChildSize: 0.30,
                 maxChildSize: 0.9,
-                builder:
-                    (BuildContext context, ScrollController sheetController) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: sheetColor,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(36),
-                          ),
-                          boxShadow: [
-                              BoxShadow(
-                                color: sheetColor.withValues(alpha: 0.5),
-                                blurRadius: 20,
-                                offset: const Offset(0, -5),
-                              ),
-                          ],
+                builder: (BuildContext context, ScrollController sheetController) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: sheetColor,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(36),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: sheetColor.withOpacity(0.5),
+                          blurRadius: 20,
+                          offset: const Offset(0, -5),
                         ),
-                        child: Column(
-                          children: [
-                            Center(
-                              child: Container(
-                                margin: const EdgeInsets.only(top: 12),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    final double targetSize =
-                                        _draggableController.size >= 0.5
-                                            ? 0.30
-                                            : 0.9;
-
-                                    _draggableController.animateTo(
-                                      targetSize,
-                                      duration:
-                                          const Duration(milliseconds: 300),
-                                      curve: Curves.easeOut,
-                                    );
-                                  },
-                                  child: const Icon(
-                                    Icons.keyboard_arrow_up_rounded,
-                                    color: Colors.white54,
-                                    size: 32,
-                                  ),
-                                ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 12),
+                            child: GestureDetector(
+                              onTap: () {
+                                final double targetSize =
+                                    _draggableController.size >= 0.5
+                                    ? 0.30
+                                    : 0.9;
+                                _draggableController.animateTo(
+                                  targetSize,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
+                                );
+                              },
+                              child: const Icon(
+                                Icons.keyboard_arrow_up_rounded,
+                                color: Colors.grey,
+                                size: 32,
                               ),
                             ),
+                          ),
+                        ),
 
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 28.0,
-                                vertical: 4,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    "Transactions",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.calendar_today,
-                                    color: Colors.white54,
-                                    size: 20,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            Expanded(
-                              child: StreamBuilder<QuerySnapshot>(
-                                stream: _firestoreService.streamTransactions(
-                                  uid: user!.uid,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28.0,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Transactions",
+                                style: TextStyle(
+                                  color: textDark,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                      ),
-                                    );
-                                  }
+                              ),
+                              const Icon(
+                                Icons.calendar_today,
+                                color: Colors.grey,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
 
-                                  final transactions =
-                                      snapshot.data?.docs ?? [];
+                        const SizedBox(height: 10),
 
-                                  if (transactions.isEmpty) {
-                                    return const Center(
-                                      child: Text(
-                                        "No transactions yet",
-                                        style: TextStyle(color: Colors.white38),
-                                      ),
-                                    );
-                                  }
+                        // Transaction List (Using same stream logic as Balance Card to filter)
+                        Expanded(
+                          child: StreamBuilder<QuerySnapshot>(
+                            stream: _selectedAccountName == null
+                                ? _firestoreService.streamTransactions(
+                                    uid: user!.uid,
+                                  )
+                                : FirebaseFirestore.instance
+                                      .collection('transactions')
+                                      .where('uid', isEqualTo: user!.uid)
+                                      .where(
+                                        'account',
+                                        isEqualTo: _selectedAccountName,
+                                      )
+                                      .orderBy('createdAt', descending: true)
+                                      .snapshots(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
 
-                                  return ListView.builder(
-                                    controller: sheetController,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 10,
-                                    ),
-                                    itemCount: transactions.length,
-                                    itemBuilder: (context, index) {
-                                      return _buildDarkTransactionTile(
-                                        transactions[index],
-                                      );
-                                    },
+                              final transactions = snapshot.data?.docs ?? [];
+
+                              if (transactions.isEmpty) {
+                                return const Center(
+                                  child: Text(
+                                    "No transactions found",
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                );
+                              }
+
+                              return ListView.builder(
+                                controller: sheetController,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 10,
+                                ),
+                                itemCount: transactions.length,
+                                itemBuilder: (context, index) {
+                                  final data =
+                                      transactions[index].data()
+                                          as Map<String, dynamic>;
+                                  return _buildDarkTransactionTile(
+                                    transactions[index],
+                                    data,
                                   );
                                 },
-                              ),
-                            ),
-                          ],
+                              );
+                            },
+                          ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -535,11 +705,8 @@ class _HomeScreenState extends State<HomeScreen> {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1,
-          ),
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
       ),
     );
   }
@@ -562,11 +729,11 @@ class _HomeScreenState extends State<HomeScreen> {
               color: bgColor,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
-                  BoxShadow(
-                    color: iconColor.withValues(alpha: 0.1),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
+                BoxShadow(
+                  color: iconColor.withOpacity(0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
               ],
             ),
             child: Icon(
@@ -591,8 +758,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDarkTransactionTile(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  Widget _buildDarkTransactionTile(
+    DocumentSnapshot doc,
+    Map<String, dynamic> data,
+  ) {
     final bool isExpense =
         (data['type'] ?? 'expense').toString().toLowerCase() == 'expense';
     final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
@@ -600,15 +769,25 @@ class _HomeScreenState extends State<HomeScreen> {
         (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
     IconData icon = Icons.category;
-    if (data['category'] == 'Food & Dining') {
+    if (data['category'] == 'Food & Dining')
       icon = Icons.restaurant;
-    } else if (data['category'] == 'Transportation') {
+    else if (data['category'] == 'Transportation')
       icon = Icons.directions_car;
-    } else if (data['category'] == 'Salary') {
+    else if (data['category'] == 'Salary')
       icon = Icons.work;
-    } else if (data['category'] == 'Entertainment') {
+    else if (data['category'] == 'Entertainment')
       icon = Icons.movie;
-    }
+
+    // White Card with Black Text and Cyan Glow
+    final Color cardBg = _themeService.isDarkMode
+        ? const Color(0xFF122545)
+        : Colors.white;
+    final Color textColor = _themeService.isDarkMode
+        ? Colors.white
+        : Colors.black;
+    final Color subTextColor = _themeService.isDarkMode
+        ? Colors.white54
+        : Colors.grey;
 
     return GestureDetector(
       onTap: () {
@@ -623,17 +802,28 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        color: Colors.transparent,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.cyanAccent.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+                color: _themeService.primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: Colors.white, size: 20),
+              child: Icon(icon, color: _themeService.primaryBlue, size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -642,31 +832,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     data['category'] ?? 'Unknown',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: textColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     DateFormat('MMM d • h:mm a').format(date),
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: subTextColor, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            // ✅ FIXED: Uses ThemeService formatter for list
             Text(
               (isExpense ? '- ' : '+ ') +
                   _themeService.formatCurrency(amount.abs()),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: isExpense ? Colors.redAccent : Colors.green,
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: 16,
               ),
             ),
           ],

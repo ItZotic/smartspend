@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smartspend/services/theme_service.dart';
+import 'package:smartspend/widgets/export_screen.dart';
+import 'package:smartspend/widgets/backup_restore_screen.dart';
+import 'package:smartspend/widgets/delete_reset_screen.dart'; // Ensure this is imported if used directly, or handled via drawer
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, _) {
         return Scaffold(
           body: Container(
+            // ✅ 1. Dynamic Gradient Background
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -45,16 +49,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: _themeService.cardBg,
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha:
-                                          _themeService.isDarkMode ? 0.3 : 0.05,
-                                    ),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(
+                                    _themeService.isDarkMode ? 0.3 : 0.05,
                                   ),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
                               ],
                             ),
+                            // ✅ 2. Back Icon Color adapts
                             child: Icon(
                               Icons.arrow_back_ios_new,
                               size: 20,
@@ -63,6 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
+                        // ✅ 3. Title Color adapts (Dark in Light Mode, White in Dark Mode)
                         Text(
                           "Preferences",
                           style: TextStyle(
@@ -82,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         const SizedBox(height: 10),
 
-                        // --- APPEARANCE (Keep) ---
+                        // --- APPEARANCE ---
                         _buildSectionHeader("APPEARANCE"),
 
                         _buildTile(
@@ -129,20 +134,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                         const SizedBox(height: 24),
 
-                        // --- NOTIFICATION (Keep) ---
+                        // --- NOTIFICATION ---
                         _buildSectionHeader("NOTIFICATION"),
+
+                        // Custom Notification Switch Tile
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
                             color: _themeService.cardBg,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
-                                BoxShadow(
-                                  color: _themeService.primaryBlue
-                                      .withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                              BoxShadow(
+                                color: _themeService.primaryBlue.withOpacity(
+                                  0.05,
                                 ),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
                             ],
                           ),
                           child: Padding(
@@ -169,14 +177,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ),
-                                trailing: Transform.scale(
-                                  scale: 0.8,
-                                  child: Switch(
-                                    value: _remindEveryday,
-                                    activeThumbColor: Colors.white,
-                                    activeTrackColor: _themeService.primaryBlue,
-                                    inactiveThumbColor: Colors.grey.shade400,
-                                    inactiveTrackColor: Colors.grey.shade700,
+                              trailing: Transform.scale(
+                                scale: 0.8,
+                                child: Switch(
+                                  value: _remindEveryday,
+                                  activeColor: Colors.white,
+                                  activeTrackColor: _themeService.primaryBlue,
+                                  inactiveThumbColor: Colors.grey.shade400,
+                                  inactiveTrackColor: Colors.grey.shade700,
                                   onChanged: (bool value) =>
                                       setState(() => _remindEveryday = value),
                                 ),
@@ -184,6 +192,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
+
                         _buildTile(
                           icon: Icons.settings_suggest_rounded,
                           title: "Notification settings",
@@ -191,7 +200,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: () {},
                         ),
 
-                        // --- REMOVED MANAGEMENT & APPLICATION SECTIONS ---
+                        // Note: Management & Application sections were moved to Drawer per your request
+                        // If you want them back here, let me know.
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
@@ -205,13 +216,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // --- Helpers ---
+
   Widget _buildIconContainer(IconData icon) {
     return Container(
       padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: _themeService.primaryBlue.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
+      decoration: BoxDecoration(
+        color: _themeService.primaryBlue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Icon(icon, color: _themeService.primaryBlue, size: 24),
     );
   }
@@ -222,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Text(
         title,
         style: TextStyle(
-          color: _themeService.primaryBlue,
+          color: _themeService.primaryBlue, // Blue header matches your inspo
           fontSize: 13,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.0,
@@ -240,16 +252,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: _themeService.cardBg,
+        color: _themeService.cardBg, // Dynamic Card Background
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: _themeService.isDarkMode ? 0.2 : 0.05,
-              ),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+          BoxShadow(
+            color: Colors.black.withOpacity(
+              _themeService.isDarkMode ? 0.2 : 0.05,
             ),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: ListTile(
@@ -282,6 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ... (Keep your _showRadioDialog, _showCurrencyDialog, _showDecimalDialog methods same as before)
   void _showRadioDialog(
     String title,
     List<String> options,
@@ -292,9 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: _themeService.isDarkMode
-              ? const Color(0xFF122545)
-              : Colors.white,
+          backgroundColor: _themeService.cardBg,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -305,33 +316,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: options.map((option) {
-                final isSelected = option == currentVal;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    option,
-                    style: TextStyle(
-                      color: _themeService.isDarkMode
-                          ? Colors.white70
-                          : Colors.black87,
-                    ),
-                  ),
-                  trailing: Icon(
-                    isSelected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    color: _themeService.primaryBlue,
-                  ),
-                  onTap: () {
-                    onSelect(option);
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: options.map((option) {
+              return RadioListTile<String>(
+                title: Text(
+                  option,
+                  style: TextStyle(color: _themeService.textMain),
+                ),
+                value: option,
+                groupValue: currentVal,
+                activeColor: _themeService.primaryBlue,
+                contentPadding: EdgeInsets.zero,
+                onChanged: (value) {
+                  if (value != null) {
+                    onSelect(value);
                     Navigator.pop(context);
-                  },
-                );
-              }).toList(),
-            ),
+                  }
+                },
+              );
+            }).toList(),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -354,9 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: _themeService.isDarkMode
-              ? const Color(0xFF122545)
-              : Colors.white,
+          backgroundColor: _themeService.cardBg,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -393,22 +396,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildRadio(String title, int val) {
-    final isSelected = _themeService.decimalPlaces == val;
-    return ListTile(
+    return RadioListTile<int>(
+      title: Text(title, style: TextStyle(color: _themeService.textMain)),
+      value: val,
+      groupValue: _themeService.decimalPlaces,
+      activeColor: _themeService.primaryBlue,
       contentPadding: EdgeInsets.zero,
-      title: Text(
-        title,
-        style: TextStyle(
-          color: _themeService.isDarkMode ? Colors.white70 : Colors.black87,
-        ),
-      ),
-      trailing: Icon(
-        isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-        color: _themeService.primaryBlue,
-      ),
-      onTap: () {
-        _themeService.setDecimalPlaces(val);
-        Navigator.pop(context);
+      onChanged: (value) {
+        if (value != null) {
+          _themeService.setDecimalPlaces(value);
+          Navigator.pop(context);
+        }
       },
     );
   }
@@ -418,9 +416,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: _themeService.isDarkMode
-              ? const Color(0xFF122545)
-              : Colors.white,
+          backgroundColor: _themeService.cardBg,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -438,46 +434,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
               itemCount: _themeService.currencies.length,
               itemBuilder: (context, index) {
                 final currency = _themeService.currencies[index];
-                  final isSelected = _themeService.currencyName == currency['name'];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      currency['name']!,
-                      style: TextStyle(
-                        color: _themeService.isDarkMode
-                            ? Colors.white70
-                            : Colors.black87,
-                      ),
+                return RadioListTile<String>(
+                  title: Text(
+                    currency['name']!,
+                    style: TextStyle(color: _themeService.textMain),
+                  ),
+                  secondary: Text(
+                    currency['symbol']!,
+                    style: TextStyle(
+                      color: _themeService.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          currency['symbol']!,
-                          style: TextStyle(
-                            color: _themeService.primaryBlue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          isSelected
-                              ? Icons.radio_button_checked
-                              : Icons.radio_button_off,
-                          color: _themeService.primaryBlue,
-                        ),
-                      ],
-                    ),
-                    onTap: () {
+                  ),
+                  value: currency['name']!,
+                  groupValue: _themeService.currencyName,
+                  activeColor: _themeService.primaryBlue,
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (value) {
+                    if (value != null) {
                       _themeService.setCurrency(
                         currency['name']!,
                         currency['symbol']!,
                       );
                       Navigator.pop(context);
-                    },
-                  );
-                },
+                    }
+                  },
+                );
+              },
             ),
           ),
           actions: [

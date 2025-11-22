@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BudgetScreen extends StatefulWidget {
   final ScrollController? scrollController;
@@ -18,8 +19,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
 
-  DateTime _selectedMonth =
-      DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
 
   final Set<String> _budgetedCategories = {};
   final Map<String, double> _budgetLimits = {};
@@ -29,8 +33,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   void _changeMonth(int offset) {
     setState(() {
-      _selectedMonth =
-          DateTime(_selectedMonth.year, _selectedMonth.month + offset, 1);
+      _selectedMonth = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + offset,
+        1,
+      );
     });
   }
 
@@ -65,7 +72,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
               );
             }
 
-            final expenseCategories = snapshot.data?.docs
+            final expenseCategories =
+                snapshot.data?.docs
                     .map((doc) => (doc.data()['name'] as String?)?.trim())
                     .whereType<String>()
                     .where((name) => name.isNotEmpty)
@@ -185,7 +193,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-
   Widget _buildBudgetSummaryCard({
     required double totalBudget,
     required double totalSpent,
@@ -289,8 +296,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       );
     }
 
-    final budgeted =
-        allCategories.where(_budgetedCategories.contains).toList();
+    final budgeted = allCategories.where(_budgetedCategories.contains).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -400,8 +406,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 8,
-                    backgroundColor:
-                        _themeService.primaryBlue.withValues(alpha: 0.15),
+                    backgroundColor: _themeService.primaryBlue.withValues(
+                      alpha: 0.15,
+                    ),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       _themeService.primaryBlue,
                     ),
@@ -410,10 +417,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 const SizedBox(height: 8),
                 Text(
                   "Spent ${_themeService.formatCurrency(spentAmount)} of ${_themeService.formatCurrency(budgetAmount)}",
-                  style: TextStyle(
-                    color: _themeService.textSub,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: _themeService.textSub, fontSize: 13),
                 ),
               ],
             ),
@@ -446,8 +450,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
       return const SizedBox.shrink();
     }
 
-    final notBudgeted =
-        allCategories.where((c) => !_budgetedCategories.contains(c));
+    final notBudgeted = allCategories.where(
+      (c) => !_budgetedCategories.contains(c),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,10 +482,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
             child: Text(
               "All categories have budgets this month.",
-              style: TextStyle(
-                color: _themeService.textSub,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: _themeService.textSub, fontSize: 14),
             ),
           )
         else
@@ -600,7 +602,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: _themeService.primaryBlue.withValues(alpha: 0.12),
+                          color: _themeService.primaryBlue.withValues(
+                            alpha: 0.12,
+                          ),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -634,7 +638,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: limitController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   textAlign: TextAlign.right,
                   decoration: InputDecoration(
                     hintText: '0.00',
@@ -695,8 +701,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           ),
                         ),
                         onPressed: () async {
-                          final entered =
-                              double.tryParse(limitController.text.trim());
+                          final entered = double.tryParse(
+                            limitController.text.trim(),
+                          );
                           final currentUser = user;
 
                           if (entered == null || currentUser == null) {
@@ -789,12 +796,16 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: _themeService.textSub.withValues(alpha: 0.25),
+                            color: _themeService.textSub.withValues(
+                              alpha: 0.25,
+                            ),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _themeService.primaryBlue),
+                          borderSide: BorderSide(
+                            color: _themeService.primaryBlue,
+                          ),
                         ),
                       ),
                       iconEnabledColor: _themeService.textMain,
@@ -826,8 +837,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: limitController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       textAlign: TextAlign.right,
                       decoration: InputDecoration(
                         hintText: '0.00',
@@ -836,12 +848,16 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: _themeService.textSub.withValues(alpha: 0.25),
+                            color: _themeService.textSub.withValues(
+                              alpha: 0.25,
+                            ),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _themeService.primaryBlue),
+                          borderSide: BorderSide(
+                            color: _themeService.primaryBlue,
+                          ),
                         ),
                       ),
                       style: TextStyle(color: _themeService.textMain),
@@ -854,7 +870,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _themeService.textMain,
                               side: BorderSide(
-                                color: _themeService.textSub.withValues(alpha: 0.3),
+                                color: _themeService.textSub.withValues(
+                                  alpha: 0.3,
+                                ),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
@@ -880,8 +898,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               ),
                             ),
                             onPressed: () async {
-                              final enteredLimit =
-                                  double.tryParse(limitController.text.trim());
+                              final enteredLimit = double.tryParse(
+                                limitController.text.trim(),
+                              );
                               final currentUser = user;
 
                               if (enteredLimit == null || currentUser == null) {
@@ -892,7 +911,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               setState(() {
                                 _budgetedCategories.add(selectedCategory);
                                 _budgetLimits[selectedCategory] = enteredLimit;
-                                _spentAmounts.putIfAbsent(selectedCategory, () => 0);
+                                _spentAmounts.putIfAbsent(
+                                  selectedCategory,
+                                  () => 0,
+                                );
                               });
 
                               await _firestoreService.setBudgetLimit(
@@ -901,7 +923,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                 month: _selectedMonth,
                                 limit: enteredLimit,
                               );
-
 
                               if (!mounted) return;
                               Navigator.of(context).pop();

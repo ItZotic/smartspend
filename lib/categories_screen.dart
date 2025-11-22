@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class _CategoryItem {
   final String id;
@@ -131,19 +132,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         icon: const Icon(Icons.add),
         label: const Text(
           "ADD NEW CATEGORY",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.3,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.3),
         ),
       ),
     );
   }
 
-  Widget _buildSection({
-    required String title,
-    required String type,
-  }) {
+  Widget _buildSection({required String title, required String type}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -197,18 +192,20 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   return Column(
                     children: [
                       for (final doc in docs)
-                        Builder(builder: (context) {
-                          final data = doc.data();
-                          return _buildCategoryRow(
-                            category: _CategoryItem(
-                              id: doc.id,
-                              type: (data['type'] as String?) ?? type,
-                              name: (data['name'] as String?) ?? 'Unnamed',
-                              iconIndex:
-                                  (data['iconIndex'] as num?)?.toInt() ?? 0,
-                            ),
-                          );
-                        }),
+                        Builder(
+                          builder: (context) {
+                            final data = doc.data();
+                            return _buildCategoryRow(
+                              category: _CategoryItem(
+                                id: doc.id,
+                                type: (data['type'] as String?) ?? type,
+                                name: (data['name'] as String?) ?? 'Unnamed',
+                                iconIndex:
+                                    (data['iconIndex'] as num?)?.toInt() ?? 0,
+                              ),
+                            );
+                          },
+                        ),
                     ],
                   );
                 },
@@ -217,9 +214,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  Widget _buildCategoryRow({
-    required _CategoryItem category,
-  }) {
+  Widget _buildCategoryRow({required _CategoryItem category}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -266,26 +261,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             onSelected: (value) {
               switch (value) {
                 case 'edit':
-                  _showEditCategoryDialog(
-                    category: category,
-                  );
+                  _showEditCategoryDialog(category: category);
                   break;
                 case 'delete':
-                  _confirmDeleteCategory(
-                    category: category,
-                  );
+                  _confirmDeleteCategory(category: category);
                   break;
               }
             },
             itemBuilder: (context) => const [
-              PopupMenuItem<String>(
-                value: 'edit',
-                child: Text('Edit'),
-              ),
-              PopupMenuItem<String>(
-                value: 'delete',
-                child: Text('Delete'),
-              ),
+              PopupMenuItem<String>(value: 'edit', child: Text('Edit')),
+              PopupMenuItem<String>(value: 'delete', child: Text('Delete')),
             ],
           ),
         ],
@@ -293,11 +278,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  void _showEditCategoryDialog({
-    required _CategoryItem category,
-  }) {
-    final TextEditingController nameController =
-        TextEditingController(text: category.name);
+  void _showEditCategoryDialog({required _CategoryItem category}) {
+    final TextEditingController nameController = TextEditingController(
+      text: category.name,
+    );
     int selectedIconIndex = category.iconIndex;
 
     final List<IconData> iconOptions = [
@@ -365,19 +349,25 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       controller: nameController,
                       decoration: InputDecoration(
                         isDense: true,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 12,
+                        ),
                         filled: true,
                         fillColor: _themeService.cardBg,
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: _themeService.textSub.withValues(alpha: 0.25),
+                            color: _themeService.textSub.withValues(
+                              alpha: 0.25,
+                            ),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _themeService.primaryBlue),
+                          borderSide: BorderSide(
+                            color: _themeService.primaryBlue,
+                          ),
                         ),
                       ),
                       style: TextStyle(color: _themeService.textMain),
@@ -440,10 +430,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _themeService.textMain,
                               side: BorderSide(
-                                color: _themeService.textSub.withValues(alpha: 0.3),
+                                color: _themeService.textSub.withValues(
+                                  alpha: 0.3,
+                                ),
                               ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -461,8 +455,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _themeService.primaryBlue,
                               foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 8,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -503,9 +499,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  void _confirmDeleteCategory({
-    required _CategoryItem category,
-  }) {
+  void _confirmDeleteCategory({required _CategoryItem category}) {
     showDialog(
       context: context,
       builder: (context) {
@@ -545,7 +539,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   uid: currentUser.uid,
                   categoryId: category.id,
                 );
-
 
                 if (!mounted) return;
                 Navigator.of(context).pop();
@@ -606,25 +599,36 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         for (final type in ['INCOME', 'EXPENSE'])
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
                               child: TextButton(
                                 style: TextButton.styleFrom(
-                                  backgroundColor:
-                                      selectedType == type ? _themeService.primaryBlue : _themeService.cardBg,
-                                  foregroundColor:
-                                      selectedType == type ? Colors.white : _themeService.textSub,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  backgroundColor: selectedType == type
+                                      ? _themeService.primaryBlue
+                                      : _themeService.cardBg,
+                                  foregroundColor: selectedType == type
+                                      ? Colors.white
+                                      : _themeService.textSub,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     side: BorderSide(
-                                      color: _themeService.textSub.withValues(alpha: 0.25),
+                                      color: _themeService.textSub.withValues(
+                                        alpha: 0.25,
+                                      ),
                                     ),
                                   ),
                                 ),
-                                onPressed: () => setState(() => selectedType = type),
+                                onPressed: () =>
+                                    setState(() => selectedType = type),
                                 child: Text(
                                   type,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
@@ -649,12 +653,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: _themeService.textSub.withValues(alpha: 0.25),
+                            color: _themeService.textSub.withValues(
+                              alpha: 0.25,
+                            ),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _themeService.primaryBlue),
+                          borderSide: BorderSide(
+                            color: _themeService.primaryBlue,
+                          ),
                         ),
                       ),
                       style: TextStyle(color: _themeService.textMain),
@@ -684,14 +692,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         children: [
                           for (int i = 0; i < _categoryIcons.length; i++)
                             GestureDetector(
-                              onTap: () => setState(() => selectedIconIndex = i),
+                              onTap: () =>
+                                  setState(() => selectedIconIndex = i),
                               child: Container(
                                 width: 52,
                                 height: 52,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: _categoryColors[i % _categoryColors.length]
-                                      .withValues(alpha: 0.15),
+                                  color:
+                                      _categoryColors[i %
+                                              _categoryColors.length]
+                                          .withValues(alpha: 0.15),
                                   border: Border.all(
                                     color: selectedIconIndex == i
                                         ? _themeService.primaryBlue
@@ -701,7 +712,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 ),
                                 child: Icon(
                                   _categoryIcons[i],
-                                  color: _categoryColors[i % _categoryColors.length],
+                                  color:
+                                      _categoryColors[i %
+                                          _categoryColors.length],
                                   size: 22,
                                 ),
                               ),
@@ -717,7 +730,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _themeService.textMain,
                               side: BorderSide(
-                                color: _themeService.textSub.withValues(alpha: 0.3),
+                                color: _themeService.textSub.withValues(
+                                  alpha: 0.3,
+                                ),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
