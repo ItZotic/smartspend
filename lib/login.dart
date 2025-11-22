@@ -50,6 +50,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const borderColor = Color(0xFF1F2933);
+    const focusedBorderColor = Color(0xFF111827);
+
+    OutlineInputBorder outlineBorder(Color color, double width) {
+      return OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: color,
+          width: width,
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: smartSpendGradient,
@@ -99,20 +112,29 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextField(
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
+                          style: const TextStyle(color: Colors.black87),
                           decoration: InputDecoration(
                             labelText: 'Email',
+                            labelStyle: const TextStyle(color: Colors.black87),
+                            hintText: 'Email',
+                            hintStyle: const TextStyle(color: Colors.black54),
                             prefixIcon: const Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                            border: outlineBorder(borderColor, 1.2),
+                            enabledBorder: outlineBorder(borderColor, 1.2),
+                            focusedBorder:
+                                outlineBorder(focusedBorderColor, 1.5),
                           ),
                         ),
                         const SizedBox(height: 16),
                         TextField(
                           controller: passwordController,
                           obscureText: !_isPasswordVisible,
+                          style: const TextStyle(color: Colors.black87),
                           decoration: InputDecoration(
                             labelText: 'Password',
+                            labelStyle: const TextStyle(color: Colors.black87),
+                            hintText: 'Password',
+                            hintStyle: const TextStyle(color: Colors.black54),
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -126,9 +148,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 });
                               },
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                            border: outlineBorder(borderColor, 1.2),
+                            enabledBorder: outlineBorder(borderColor, 1.2),
+                            focusedBorder:
+                                outlineBorder(focusedBorderColor, 1.5),
                           ),
                         ),
                         const SizedBox(height: 12),
