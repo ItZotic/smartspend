@@ -22,8 +22,9 @@ class AddTransactionScreen extends StatefulWidget {
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _descController = TextEditingController();
 
-  String _categoryName = 'Food & Dining';
-  String _account = 'Cash';
+  String? _selectedAccountName;
+  String? _selectedCategoryName;
+  String? _selectedCategoryId;
   String _type = 'Expense';
   DateTime _selectedDate = DateTime.now();
   String _amountText = '';
@@ -42,8 +43,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     // Pre-fill data if editing
     if (isEditing && widget.transactionData != null) {
       final data = widget.transactionData!;
-      _categoryName = data['category'] ?? 'Food & Dining';
-      _account = data['account'] ?? 'Cash';
+      _selectedCategoryName = data['category'] ?? 'Uncategorized';
+      _selectedCategoryId = data['categoryId'];
+      _selectedAccountName = data['accountName'] ?? data['account'];
       _type = (data['type'] ?? 'expense').toString() == 'income'
           ? 'Income'
           : 'Expense';
@@ -98,8 +100,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
+    if (_selectedAccountName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose an account')),
+      );
+      return;
+    }
+
+    if (_type == 'Expense' && _selectedCategoryName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose a category')),
+      );
+      return;
+    }
+
     if (_descController.text.isEmpty) {
-      _descController.text = _categoryName;
+      _descController.text = _selectedCategoryName ?? 'Transaction';
     }
 
     setState(() => _isSaving = true);
@@ -108,13 +124,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       final double amount = double.parse(_amountText);
       final double finalAmount = _type == 'Expense' ? -amount : amount;
 
+      final selectedCategoryName = _selectedCategoryName ?? 'Uncategorized';
+      final selectedAccountName = _selectedAccountName ?? 'ACCOUNT';
+
       final data = {
         'userId': user!.uid,
         'uid': user!.uid,
         'amount': finalAmount,
         'type': _type.toLowerCase(),
-        'category': _categoryName,
-        'account': _account,
+        'category': selectedCategoryName,
+        'categoryId': _selectedCategoryId,
+        'accountName': selectedAccountName,
+        'account': selectedAccountName,
         'name': _descController.text.trim(),
         'date': Timestamp.fromDate(_selectedDate),
         'createdAt': isEditing
@@ -263,31 +284,49 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _firestoreService.streamUserCategories(
-                    uid: user!.uid,
-                    type: _type.toLowerCase(),
-                  ),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream:
+                      _firestoreService.streamExpenseCategories(user!.uid),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No expense categories yet',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      );
+                    }
+
                     final docs = snapshot.data!.docs;
                     return ListView.builder(
                       itemCount: docs.length,
                       itemBuilder: (context, index) {
-                        final data = docs[index].data() as Map<String, dynamic>;
+                        final doc = docs[index];
+                        final data = doc.data();
+                        final categoryName = data['name'] ?? 'Unnamed';
+
                         return ListTile(
-                          leading: CircleAvatar(
+                          leading: const CircleAvatar(
                             backgroundColor: Colors.white10,
-                            child: Icon(Icons.category, color: Colors.white),
+                            child: Icon(Icons.category_rounded,
+                                color: Colors.white),
                           ),
                           title: Text(
-                            data['name'] ?? 'Unnamed',
+                            categoryName,
                             style: const TextStyle(color: Colors.white),
                           ),
                           onTap: () {
-                            setState(() => _categoryName = data['name']);
+                            setState(() {
+                              _selectedCategoryName = categoryName;
+                              _selectedCategoryId = doc.id;
+                            });
                             Navigator.pop(context);
                           },
                         );
@@ -406,12 +445,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                             Expanded(
                               child: _buildSelector(
                                 icon: Icons.account_balance_wallet,
-                                label: _account,
+                                label: _selectedAccountName ?? 'ACCOUNT',
                                 onTap: () => _showSelectionSheet(
                                   title: "Select Account",
                                   items: ["Cash", "Bank", "Savings", "Card"],
                                   onSelect: (val) =>
-                                      setState(() => _account = val),
+                                      setState(() => _selectedAccountName = val),
                                 ),
                               ),
                             ),
@@ -419,7 +458,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                             Expanded(
                               child: _buildSelector(
                                 icon: Icons.category,
-                                label: _categoryName,
+                                label: _selectedCategoryName ?? 'CATEGORY',
                                 onTap: _showCategorySheet,
                               ),
                             ),

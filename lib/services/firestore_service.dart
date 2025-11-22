@@ -117,6 +117,17 @@ class FirestoreService {
         .snapshots();
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamExpenseCategories(
+      String uid) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('categories')
+        .where('type', isEqualTo: 'expense')
+        .orderBy('name')
+        .snapshots();
+  }
+
   Future<String> addTransaction({
     required String uid,
     required double amount,
