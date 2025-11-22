@@ -239,51 +239,81 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     required List<String> items,
     required ValueChanged<String> onSelect,
   }) {
+    final textColor =
+        _themeService.isDarkMode ? Colors.black87 : _themeService.textMain;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: _themeService.sheetColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return SafeArea(
           top: false,
           child: Container(
-            padding: const EdgeInsets.all(16),
-            height: 320,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: _themeService.textMain,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+            margin: const EdgeInsets.all(12),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    color: _themeService.primaryBlue.withValues(alpha: 0.3),
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final label = items[index];
-                      return ListTile(
-                        title: Text(
-                          label,
-                          style: TextStyle(color: _themeService.textMain),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[400],
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        onTap: () {
-                          onSelect(label);
-                          Navigator.pop(context);
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) => Divider(
+                          height: 1,
+                          color: Colors.grey[300],
+                        ),
+                        itemBuilder: (context, index) {
+                          final label = items[index];
+                          return ListTile(
+                            title: Text(
+                              label,
+                              style: TextStyle(color: textColor),
+                            ),
+                            onTap: () {
+                              onSelect(label);
+                              Navigator.pop(context);
+                            },
+                          );
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         );
@@ -296,94 +326,127 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: _themeService.sheetColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
+        final textColor =
+            _themeService.isDarkMode ? Colors.black87 : _themeService.textMain;
+
         return SafeArea(
           top: false,
           child: Container(
-            padding: const EdgeInsets.all(16),
-            height: 360,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Text(
-                    "Select Category",
-                    style: TextStyle(
-                      color: _themeService.textMain,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+            margin: const EdgeInsets.all(12),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
+              ),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    color: _themeService.primaryBlue.withValues(alpha: 0.3),
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                    stream: _firestoreService.streamCategoriesByType(
-                      uid: user!.uid,
-                      type: _typeString,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[400],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
                     ),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      }
+                    const SizedBox(height: 12),
+                    Text(
+                      "Select Category",
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: StreamBuilder<
+                          QuerySnapshot<Map<String, dynamic>>>(
+                        stream: _firestoreService.streamCategoriesByType(
+                          uid: user!.uid,
+                          type: _typeString,
+                        ),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                      if (!snapshot.hasData ||
-                          snapshot.data!.docs.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'No categories yet',
-                            style: TextStyle(color: _themeService.textSub),
-                          ),
-                        );
-                      }
-
-                      final docs = snapshot.data!.docs;
-
-                      return ListView.builder(
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final doc = docs[index];
-                          final data = doc.data();
-                          final categoryName = data['name'] ?? 'Unnamed';
-
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  _themeService.primaryBlue.withValues(
-                                alpha: 0.15,
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
+                            return Center(
+                              child: Text(
+                                'No $_typeString categories yet',
+                                style: TextStyle(
+                                  color: _themeService.isDarkMode
+                                      ? Colors.black54
+                                      : _themeService.textSub,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.category_rounded,
-                                color: _themeService.primaryBlue,
-                              ),
+                            );
+                          }
+
+                          final docs = snapshot.data!.docs;
+
+                          return ListView.separated(
+                            itemCount: docs.length,
+                            separatorBuilder: (_, __) => Divider(
+                              height: 1,
+                              color: Colors.grey[300],
                             ),
-                            title: Text(
-                              categoryName,
-                              style: TextStyle(
-                                color: _themeService.textMain,
-                              ),
-                            ),
-                            onTap: () {
-                              setState(() {
-                                _selectedCategoryName = categoryName;
-                                _selectedCategoryId = doc.id;
-                              });
-                              Navigator.pop(context);
+                            itemBuilder: (context, index) {
+                              final doc = docs[index];
+                              final data = doc.data();
+                              final categoryName =
+                                  (data['name'] as String?) ?? 'Unnamed';
+
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: _themeService.primaryBlue
+                                      .withValues(alpha: 0.1),
+                                  child: Icon(
+                                    Icons.category_rounded,
+                                    color: _themeService.primaryBlue,
+                                  ),
+                                ),
+                                title: Text(
+                                  categoryName,
+                                  style: TextStyle(color: textColor),
+                                ),
+                                onTap: () {
+                                  setState(() {
+                                    _selectedCategoryName = categoryName;
+                                    _selectedCategoryId = doc.id;
+                                  });
+                                  Navigator.pop(context);
+                                },
+                              );
                             },
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         );
