@@ -544,6 +544,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   categoryId: category.id,
                 );
 
+
+                if (!mounted) return;
                 Navigator.of(context).pop();
               },
               child: Text(

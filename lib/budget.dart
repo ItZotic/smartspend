@@ -667,6 +667,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             limit: entered,
                           );
 
+                          if (!mounted) return;
                           Navigator.of(context).pop();
                         },
                         child: const Text(
@@ -727,7 +728,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: selectedCategory,
+                      initialValue: selectedCategory,
                       dropdownColor: _themeService.cardBg,
                       decoration: InputDecoration(
                         filled: true,
@@ -848,6 +849,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                 limit: enteredLimit,
                               );
 
+
+                              if (!mounted) return;
                               Navigator.of(context).pop();
                             },
                             child: const Text(

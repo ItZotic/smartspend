@@ -31,7 +31,7 @@ class MainMenuDrawer extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: themeService.primaryBlue.withOpacity(0.1),
+                    color: themeService.primaryBlue.withValues(alpha:0.1),
                     width: 1,
                   ),
                 ),
@@ -47,7 +47,7 @@ class MainMenuDrawer extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: themeService.primaryBlue.withOpacity(0.1),
+                          color: themeService.primaryBlue.withValues(alpha:0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -94,7 +94,7 @@ class MainMenuDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Divider(
-                color: themeService.primaryBlue.withOpacity(0.1),
+                color: themeService.primaryBlue.withValues(alpha:0.1),
               ),
             ),
 
@@ -145,7 +145,7 @@ class MainMenuDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Divider(
-                color: themeService.primaryBlue.withOpacity(0.1),
+                color: themeService.primaryBlue.withValues(alpha:0.1),
               ),
             ),
 
