@@ -69,6 +69,48 @@ class AuthService {
     await _auth.signOut();
   }
 
+  // Convenience alias methods for consistency across the app
+  Future<void> signIn(String email, String password) async =>
+      login(email, password);
+
+  Future<void> signOut() async => logout();
+
+  Future<void> deleteAccountAndData() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw const AuthException('No user is currently signed in.');
+    }
+
+    try {
+      // Delete associated Firestore data
+      final batch = _firestore.batch();
+
+      // Remove user profile document
+      final userDoc = _firestore.collection('users').doc(currentUser.uid);
+      batch.delete(userDoc);
+
+      // Remove transactions tied to the user
+      final transactionsQuery = await _firestore
+          .collection('transactions')
+          .where('uid', isEqualTo: currentUser.uid)
+          .get();
+      for (final doc in transactionsQuery.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+
+      // Delete authentication account
+      await currentUser.delete();
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseAuthException(e));
+    } catch (_) {
+      throw const AuthException(
+        'Failed to delete account. Please try again later.',
+      );
+    }
+  }
+
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
