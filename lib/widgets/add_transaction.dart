@@ -50,7 +50,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _selectedAccountName = data['accountName'] ?? data['account'];
       _isExpense = (data['type'] ?? 'expense').toString() != 'income';
 
-      if (data['date'] != null) {
+      if (data['date'] != null && data['date'] is Timestamp) {
         _selectedDate = (data['date'] as Timestamp).toDate();
       }
 
@@ -92,7 +92,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     });
   }
 
-  Map<String, dynamic>? _buildTransactionData({required bool preserveCreatedAt}) {
+  Map<String, dynamic>? _buildTransactionData({
+    required bool preserveCreatedAt,
+  }) {
     if (user == null) return null;
 
     if (_amountText.isEmpty || double.tryParse(_amountText) == 0) {
@@ -125,6 +127,16 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final selectedCategoryName = _selectedCategoryName ?? 'Uncategorized';
     final selectedAccountName = _selectedAccountName ?? 'ACCOUNT';
 
+    // ✅ Clean, explicit handling of createdAt (no nested ?: / ??)
+    dynamic createdAtValue;
+    if (preserveCreatedAt &&
+        widget.transactionData != null &&
+        widget.transactionData!['createdAt'] != null) {
+      createdAtValue = widget.transactionData!['createdAt'];
+    } else {
+      createdAtValue = FieldValue.serverTimestamp();
+    }
+
     return {
       'userId': user!.uid,
       'uid': user!.uid,
@@ -136,9 +148,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       'account': selectedAccountName,
       'name': _descController.text.trim(),
       'date': Timestamp.fromDate(_selectedDate),
-      'createdAt': preserveCreatedAt
-          ? widget.transactionData?['createdAt'] ?? FieldValue.serverTimestamp()
-          : FieldValue.serverTimestamp(),
+      'createdAt': createdAtValue,
     };
   }
 
@@ -151,18 +161,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
       await FirebaseFirestore.instance.collection('transactions').add(data);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Transaction saved!')),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -191,9 +198,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -213,25 +219,25 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Transaction deleted')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transaction deleted')),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error deleting: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error deleting: $e')));
         setState(() => _isDeleting = false);
       }
     }
   }
 
-  // ... (Selection Sheet Methods are same as before) ...
+  // ---------------- Selection sheets ----------------
+
   void _showSelectionSheet({
     required String title,
     required List<String> items,
-    required Function(String) onSelect,
+    required ValueChanged<String> onSelect,
   }) {
     showModalBottomSheet(
       context: context,
@@ -240,38 +246,45 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: _themeService.textMain,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(
-                      items[index],
-                      style: TextStyle(color: _themeService.textMain),
+        return SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            height: 320,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: _themeService.textMain,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                    onTap: () {
-                      onSelect(items[index]);
-                      Navigator.pop(context);
-                    },
-                    );
-                  },
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final label = items[index];
+                      return ListTile(
+                        title: Text(
+                          label,
+                          style: TextStyle(color: _themeService.textMain),
+                        ),
+                        onTap: () {
+                          onSelect(label);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -280,6 +293,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   void _showCategorySheet() {
     if (user == null) return;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: _themeService.sheetColor,
@@ -287,81 +301,97 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Select Category",
-                style: TextStyle(
-                  color: _themeService.textMain,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: _firestoreService.streamCategoriesByType(
-                    uid: user!.uid,
-                    type: _typeString,
+        return SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            height: 360,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Text(
+                    "Select Category",
+                    style: TextStyle(
+                      color: _themeService.textMain,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'No categories yet',
-                          style: TextStyle(color: _themeService.textSub),
-                        ),
-                      );
-                    }
-
-                    final docs = snapshot.data!.docs;
-                    return ListView.builder(
-                      itemCount: docs.length,
-                      itemBuilder: (context, index) {
-                        final doc = docs[index];
-                    final data = doc.data();
-                    final categoryName = data['name'] ?? 'Unnamed';
-
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor:
-                            _themeService.primaryBlue.withValues(alpha: 0.15),
-                        child: Icon(Icons.category_rounded,
-                            color: _themeService.primaryBlue),
-                      ),
-                      title: Text(
-                        categoryName,
-                        style: TextStyle(color: _themeService.textMain),
-                      ),
-                      onTap: () {
-                        setState(() {
-                          _selectedCategoryName = categoryName;
-                              _selectedCategoryId = doc.id;
-                            });
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    );
-                  },
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _firestoreService.streamCategoriesByType(
+                      uid: user!.uid,
+                      type: _typeString,
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+
+                      if (!snapshot.hasData ||
+                          snapshot.data!.docs.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No categories yet',
+                            style: TextStyle(color: _themeService.textSub),
+                          ),
+                        );
+                      }
+
+                      final docs = snapshot.data!.docs;
+
+                      return ListView.builder(
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final doc = docs[index];
+                          final data = doc.data();
+                          final categoryName = data['name'] ?? 'Unnamed';
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  _themeService.primaryBlue.withValues(
+                                alpha: 0.15,
+                              ),
+                              child: Icon(
+                                Icons.category_rounded,
+                                color: _themeService.primaryBlue,
+                              ),
+                            ),
+                            title: Text(
+                              categoryName,
+                              style: TextStyle(
+                                color: _themeService.textMain,
+                              ),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _selectedCategoryName = categoryName;
+                                _selectedCategoryId = doc.id;
+                              });
+                              Navigator.pop(context);
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
+
+  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
@@ -483,9 +513,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     label: _selectedAccountName ?? 'ACCOUNT',
                                     onTap: () => _showSelectionSheet(
                                       title: "Select Account",
-                                      items: ["Cash", "Bank", "Savings", "Card"],
-                                      onSelect: (val) =>
-                                          setState(() => _selectedAccountName = val),
+                                      items: const [
+                                        "Cash",
+                                        "Bank",
+                                        "Savings",
+                                        "Card"
+                                      ],
+                                      onSelect: (val) => setState(
+                                          () => _selectedAccountName = val),
                                     ),
                                   ),
                                 ),
@@ -493,7 +528,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                 Expanded(
                                   child: _buildSelector(
                                     icon: Icons.category,
-                                    label: _selectedCategoryName ?? 'CATEGORY',
+                                    label:
+                                        _selectedCategoryName ?? 'CATEGORY',
                                     onTap: _showCategorySheet,
                                   ),
                                 ),
@@ -505,7 +541,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
                           // --- Note Input ---
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20),
                             child: TextField(
                               controller: _descController,
                               textAlign: TextAlign.center,
@@ -514,7 +551,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                 hintStyle: TextStyle(color: textSub),
                                 border: InputBorder.none,
                               ),
-                              style: TextStyle(color: textDark, fontSize: 16),
+                              style:
+                                  TextStyle(color: textDark, fontSize: 16),
                             ),
                           ),
 
@@ -522,10 +560,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
                           // --- Amount Display ---
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.end,
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.baseline,
                               textBaseline: TextBaseline.alphabetic,
                               children: [
                                 Text(
@@ -543,11 +583,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
                                       color: cardBg,
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius:
+                                          BorderRadius.circular(8),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.black.withValues(
-                                            alpha: _themeService.isDarkMode
+                                            alpha: _themeService
+                                                    .isDarkMode
                                                 ? 0.25
                                                 : 0.05,
                                           ),
@@ -569,19 +611,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
                           const SizedBox(height: 20),
 
-                          // Only show BIG save button at bottom if Editing (to make it easier)
+                          // --- Big update button in edit mode ---
                           if (isEditing)
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20.0),
                               child: SizedBox(
                                 width: double.infinity,
                                 height: 50,
                                 child: ElevatedButton(
-                                  onPressed: _saveTransaction,
+                                  onPressed: _updateTransaction,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: primaryBlue,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
                                     ),
                                   ),
                                   child: const Text(
@@ -614,7 +658,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                           children: [
                             _buildKey("7"),
                             _buildKey("8"),
@@ -623,7 +668,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                         const SizedBox(height: 12),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                           children: [
                             _buildKey("4"),
                             _buildKey("5"),
@@ -632,7 +678,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                         const SizedBox(height: 12),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                           children: [
                             _buildKey("1"),
                             _buildKey("2"),
@@ -641,7 +688,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                         const SizedBox(height: 12),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                           children: [
                             _buildKey("."),
                             _buildKey("0"),
@@ -655,19 +703,23 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     lastDate: DateTime(2030),
                                   );
                                   if (picked != null) {
-                                    setState(() => _selectedDate = picked);
+                                    setState(
+                                        () => _selectedDate = picked);
                                   }
                                 },
                                 child: Container(
                                   height: 60,
-                                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 6),
                                   decoration: BoxDecoration(
                                     color: cardBg,
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius:
+                                        BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withValues(
-                                          alpha: _themeService.isDarkMode
+                                          alpha: _themeService
+                                                  .isDarkMode
                                               ? 0.2
                                               : 0.05,
                                         ),
@@ -678,7 +730,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                   ),
                                   child: Center(
                                     child: Text(
-                                      DateFormat('MMM dd').format(_selectedDate),
+                                      DateFormat('MMM dd')
+                                          .format(_selectedDate),
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -741,7 +794,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        padding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
           color: _themeService.cardBg,
           border: Border.all(
