@@ -5,7 +5,7 @@ import 'budget.dart';
 import 'analytics.dart';
 import 'accounts.dart';
 import 'categories_screen.dart';
-import 'add_transaction.dart';
+import 'package:smartspend/widgets/add_transaction.dart';
 import 'package:flutter/rendering.dart'; // <-- REQUIRED for ScrollDirection
 
 class MainMenuScreen extends StatefulWidget {
