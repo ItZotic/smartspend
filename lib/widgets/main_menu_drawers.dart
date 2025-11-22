@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:smartspend/widgets/settings.dart';
 import 'package:smartspend/services/theme_service.dart';
-import 'package:smartspend/widgets/export_screen.dart'; // ✅ Import Export Screen
+import 'package:smartspend/widgets/export_screen.dart';
+import 'package:smartspend/widgets/backup_restore_screen.dart';
+import 'package:smartspend/widgets/delete_reset_screen.dart';
+import 'package:smartspend/services/auth_service.dart';
 
 class MainMenuDrawer extends StatelessWidget {
   const MainMenuDrawer({super.key});
@@ -9,6 +12,7 @@ class MainMenuDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeService themeService = ThemeService();
+    final AuthService authService = AuthService();
 
     return Drawer(
       child: Container(
@@ -27,7 +31,7 @@ class MainMenuDrawer extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: themeService.primaryBlue.withValues(alpha: 0.1),
+                    color: themeService.primaryBlue.withOpacity(0.1),
                     width: 1,
                   ),
                 ),
@@ -43,7 +47,7 @@ class MainMenuDrawer extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: themeService.primaryBlue.withValues(alpha: 0.1),
+                          color: themeService.primaryBlue.withOpacity(0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -90,14 +94,13 @@ class MainMenuDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Divider(
-                color: themeService.primaryBlue.withValues(alpha: 0.1),
+                color: themeService.primaryBlue.withOpacity(0.1),
               ),
             ),
 
             // Management
             _buildSectionTitle("Management", themeService.primaryBlue),
 
-            // ✅ EXPORT RECORDS (Linked here!)
             _buildMenuItem(
               Icons.file_download_outlined,
               "Export records",
@@ -117,20 +120,32 @@ class MainMenuDrawer extends StatelessWidget {
               "Backup & Restore",
               themeService.textMain,
               themeService.primaryBlue,
-              () {},
+              () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BackupRestoreScreen()),
+                );
+              },
             ),
             _buildMenuItem(
               Icons.delete_outline,
               "Delete & Reset",
               Colors.redAccent,
               Colors.redAccent,
-              () {},
+              () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DeleteResetScreen()),
+                );
+              },
             ),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Divider(
-                color: themeService.primaryBlue.withValues(alpha: 0.1),
+                color: themeService.primaryBlue.withOpacity(0.1),
               ),
             ),
 
@@ -157,6 +172,54 @@ class MainMenuDrawer extends StatelessWidget {
               themeService.primaryBlue,
               () {},
             ),
+
+            const SizedBox(height: 20),
+
+            _buildMenuItem(
+              Icons.logout,
+              "Log Out",
+              themeService.textMain,
+              themeService.primaryBlue,
+              () async {
+                final shouldLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: themeService.cardBg,
+                    title: Text(
+                      "Log Out",
+                      style: TextStyle(color: themeService.textMain),
+                    ),
+                    content: Text(
+                      "Are you sure you want to log out?",
+                      style: TextStyle(color: themeService.textSub),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text("CANCEL"),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text(
+                          "LOG OUT",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (shouldLogout == true) {
+                  await authService.logout();
+                  if (context.mounted) {
+                    Navigator.of(context)
+                        .pushNamedAndRemoveUntil('/', (route) => false);
+                  }
+                }
+              },
+            ),
+
+            const SizedBox(height: 40),
           ],
         ),
       ),
