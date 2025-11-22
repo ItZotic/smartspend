@@ -1,5 +1,21 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
+
+class _CategoryItem {
+  final String id;
+  final String type;
+  String name;
+  int iconIndex;
+
+  _CategoryItem({
+    required this.id,
+    required this.type,
+    required this.name,
+    required this.iconIndex,
+  });
+}
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -9,30 +25,32 @@ class CategoriesScreen extends StatefulWidget {
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
+  final user = FirebaseAuth.instance.currentUser;
+  final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
 
-  final List<String> _incomeCategories = [
-    'Salary',
-    'Awards',
-    'Grants',
-    'Rental',
-    'Investments',
-    'Refunds',
-    'Gifts',
-    'Interest',
+  final List<_CategoryItem> _incomeCategories = [
+    _CategoryItem(id: 'income_salary', type: 'income', name: 'Salary', iconIndex: 0),
+    _CategoryItem(id: 'income_awards', type: 'income', name: 'Awards', iconIndex: 1),
+    _CategoryItem(id: 'income_grants', type: 'income', name: 'Grants', iconIndex: 2),
+    _CategoryItem(id: 'income_rental', type: 'income', name: 'Rental', iconIndex: 3),
+    _CategoryItem(id: 'income_investments', type: 'income', name: 'Investments', iconIndex: 4),
+    _CategoryItem(id: 'income_refunds', type: 'income', name: 'Refunds', iconIndex: 5),
+    _CategoryItem(id: 'income_gifts', type: 'income', name: 'Gifts', iconIndex: 6),
+    _CategoryItem(id: 'income_interest', type: 'income', name: 'Interest', iconIndex: 7),
   ];
 
-  final List<String> _expenseCategories = [
-    'Food & Dining',
-    'Transportation',
-    'Bills',
-    'Groceries',
-    'Entertainment',
-    'Shopping',
-    'Healthcare',
-    'Education',
-    'Travel',
-    'Utilities',
+  final List<_CategoryItem> _expenseCategories = [
+    _CategoryItem(id: 'expense_food', type: 'expense', name: 'Food & Dining', iconIndex: 0),
+    _CategoryItem(id: 'expense_transport', type: 'expense', name: 'Transportation', iconIndex: 1),
+    _CategoryItem(id: 'expense_bills', type: 'expense', name: 'Bills', iconIndex: 2),
+    _CategoryItem(id: 'expense_groceries', type: 'expense', name: 'Groceries', iconIndex: 3),
+    _CategoryItem(id: 'expense_entertainment', type: 'expense', name: 'Entertainment', iconIndex: 4),
+    _CategoryItem(id: 'expense_shopping', type: 'expense', name: 'Shopping', iconIndex: 5),
+    _CategoryItem(id: 'expense_healthcare', type: 'expense', name: 'Healthcare', iconIndex: 6),
+    _CategoryItem(id: 'expense_education', type: 'expense', name: 'Education', iconIndex: 7),
+    _CategoryItem(id: 'expense_travel', type: 'expense', name: 'Travel', iconIndex: 8),
+    _CategoryItem(id: 'expense_utilities', type: 'expense', name: 'Utilities', iconIndex: 0),
   ];
 
   final List<Color> _categoryColors = const [
@@ -99,13 +117,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           _buildSection(
                             title: "Income categories",
                             categories: _incomeCategories,
-                            isIncome: true,
                           ),
                           const SizedBox(height: 24),
                           _buildSection(
                             title: "Expense categories",
                             categories: _expenseCategories,
-                            isIncome: false,
                           ),
                           const SizedBox(height: 24),
                           _buildAddCategoryButton(),
@@ -150,8 +166,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Widget _buildSection({
     required String title,
-    required List<String> categories,
-    required bool isIncome,
+    required List<_CategoryItem> categories,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,11 +187,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         const SizedBox(height: 12),
         Column(
           children: [
-            for (int i = 0; i < categories.length; i++)
-              _buildCategoryRow(
-                categoryName: categories[i],
-                isIncome: isIncome,
-              ),
+            for (final category in categories)
+              _buildCategoryRow(category: category),
           ],
         ),
       ],
@@ -184,8 +196,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Widget _buildCategoryRow({
-    required String categoryName,
-    required bool isIncome,
+    required _CategoryItem category,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -220,7 +231,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              categoryName,
+              category.name,
               style: TextStyle(
                 color: _themeService.textMain,
                 fontSize: 16,
@@ -234,14 +245,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               switch (value) {
                 case 'edit':
                   _showEditCategoryDialog(
-                    originalName: categoryName,
-                    isIncome: isIncome,
+                    category: category,
                   );
                   break;
                 case 'delete':
                   _confirmDeleteCategory(
-                    categoryName: categoryName,
-                    isIncome: isIncome,
+                    category: category,
                   );
                   break;
               }
@@ -263,12 +272,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   void _showEditCategoryDialog({
-    required String originalName,
-    required bool isIncome,
+    required _CategoryItem category,
   }) {
     final TextEditingController nameController =
-        TextEditingController(text: originalName);
-    int selectedIconIndex = 0;
+        TextEditingController(text: category.name);
+    int selectedIconIndex = category.iconIndex;
 
     final List<IconData> iconOptions = [
       Icons.directions_car,
@@ -439,18 +447,31 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             ),
                             onPressed: () {
                               final updatedName = nameController.text.trim();
+                              final currentUser = user;
+
+                              if (updatedName.isEmpty || currentUser == null) {
+                                Navigator.of(context).pop();
+                                return;
+                              }
 
                               setState(() {
-                                final list = isIncome
-                                    ? _incomeCategories
-                                    : _expenseCategories;
-                                final index = list.indexOf(originalName);
+                                final list =
+                                    category.type == 'income' ? _incomeCategories : _expenseCategories;
+                                final index =
+                                    list.indexWhere((item) => item.id == category.id);
 
-                                if (index != -1 && updatedName.isNotEmpty) {
-                                  list[index] = updatedName;
-                                  // TODO: also update Firestore and save selected icon.
+                                if (index != -1) {
+                                  list[index].name = updatedName;
+                                  list[index].iconIndex = selectedIconIndex;
                                 }
                               });
+
+                              _firestoreService.updateCategory(
+                                uid: currentUser.uid,
+                                categoryId: category.id,
+                                name: updatedName,
+                                iconIndex: selectedIconIndex,
+                              );
 
                               Navigator.of(context).pop();
                             },
@@ -473,8 +494,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   void _confirmDeleteCategory({
-    required String categoryName,
-    required bool isIncome,
+    required _CategoryItem category,
   }) {
     showDialog(
       context: context,
@@ -492,7 +512,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ),
           ),
           content: Text(
-            'Are you sure you want to delete "$categoryName"?',
+            'Are you sure you want to delete "${category.name}"?',
             style: TextStyle(color: _themeService.textSub),
           ),
           actions: [
@@ -504,15 +524,25 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               ),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
+                final currentUser = user;
+                if (currentUser == null) {
+                  Navigator.of(context).pop();
+                  return;
+                }
+
                 setState(() {
-                  if (isIncome) {
-                    _incomeCategories.remove(categoryName);
+                  if (category.type == 'income') {
+                    _incomeCategories.removeWhere((item) => item.id == category.id);
                   } else {
-                    _expenseCategories.remove(categoryName);
+                    _expenseCategories.removeWhere((item) => item.id == category.id);
                   }
-                  // TODO: remove from Firestore as well.
                 });
+
+                await _firestoreService.deleteCategory(
+                  uid: currentUser.uid,
+                  categoryId: category.id,
+                );
 
                 Navigator.of(context).pop();
               },
@@ -708,10 +738,39 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            onPressed: () {
+                            onPressed: () async {
                               final name = nameController.text.trim();
-                              // TODO: Save new category to data store
-                              debugPrint('Saving category: type=$selectedType, name=$name, iconIndex=$selectedIconIndex');
+                              final currentUser = user;
+
+                              if (name.isEmpty || currentUser == null) {
+                                Navigator.of(context).pop();
+                                return;
+                              }
+
+                              final type = selectedType.toLowerCase();
+
+                              final docRef = await _firestoreService.addUserCategory(
+                                uid: currentUser.uid,
+                                name: name,
+                                type: type,
+                                iconIndex: selectedIconIndex,
+                              );
+
+                              setState(() {
+                                final newCategory = _CategoryItem(
+                                  id: docRef.id,
+                                  type: type,
+                                  name: name,
+                                  iconIndex: selectedIconIndex,
+                                );
+
+                                if (type == 'income') {
+                                  _incomeCategories.add(newCategory);
+                                } else {
+                                  _expenseCategories.add(newCategory);
+                                }
+                              });
+
                               Navigator.of(context).pop();
                             },
                             child: const Text(

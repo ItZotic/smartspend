@@ -188,6 +188,22 @@ class FirestoreService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> setBudgetLimit({
+    required String uid,
+    required String categoryName,
+    required DateTime month,
+    required double limit,
+    String? categoryId,
+  }) async {
+    await setBudget(
+      uid: uid,
+      categoryId: categoryId ?? categoryName,
+      categoryName: categoryName,
+      limit: limit,
+      month: month,
+    );
+  }
+
   // 🔽 --- THIS FUNCTION IS NOW FIXED --- 🔽
   Future<void> addCategory({
     required String uid,
@@ -209,6 +225,54 @@ class FirestoreService {
       'owner': uid,
       'icon': iconString,
       'color': colorValue ?? 0xFF2979FF,
+      'iconIndex': 0,
+      'createdAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<DocumentReference<Map<String, dynamic>>> addUserCategory({
+    required String uid,
+    required String name,
+    required String type,
+    required int iconIndex,
+  }) {
+    final trimmedName = name.trim();
+
+    return _firestore.collection('categories').add({
+      'name': trimmedName,
+      'type': type,
+      'owner': uid,
+      'iconIndex': iconIndex,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> updateCategory({
+    required String uid,
+    required String categoryId,
+    String? name,
+    int? iconIndex,
+  }) async {
+    final updates = <String, dynamic>{'owner': uid};
+
+    if (name != null) {
+      updates['name'] = name.trim();
+    }
+
+    if (iconIndex != null) {
+      updates['iconIndex'] = iconIndex;
+    }
+
+    await _firestore
+        .collection('categories')
+        .doc(categoryId)
+        .set(updates, SetOptions(merge: true));
+  }
+
+  Future<void> deleteCategory({
+    required String uid,
+    required String categoryId,
+  }) {
+    return _firestore.collection('categories').doc(categoryId).delete();
   }
 }

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 
 class BudgetScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class BudgetScreen extends StatefulWidget {
 
 class _BudgetScreenState extends State<BudgetScreen> {
   final user = FirebaseAuth.instance.currentUser;
+  final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
 
   DateTime _selectedMonth =
@@ -35,12 +37,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   final Set<String> _budgetedCategories = {};
   final Map<String, double> _budgetLimits = {};
   final Map<String, double> _spentAmounts = {};
-
-  DateTime get _monthStart =>
-      DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-
-  DateTime get _nextMonthStart =>
-      DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
 
   String get _monthLabel => DateFormat.yMMMM().format(_selectedMonth);
 
@@ -124,9 +120,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ),
           floatingActionButton: FloatingActionButton(
             backgroundColor: _themeService.primaryBlue,
-            onPressed: () {
-              // TODO: open add budget screen
-            },
+            onPressed: _showAddBudgetDialog,
             child: const Icon(Icons.add, color: Colors.white),
           ),
         );
@@ -650,14 +644,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () {
-                          final entered = double.tryParse(limitController.text.trim());
+                        onPressed: () async {
+                          final entered =
+                              double.tryParse(limitController.text.trim());
+                          final currentUser = user;
+
+                          if (entered == null || currentUser == null) {
+                            Navigator.of(context).pop();
+                            return;
+                          }
+
                           setState(() {
                             _budgetedCategories.add(categoryName);
-                            _budgetLimits[categoryName] = entered ?? 0;
+                            _budgetLimits[categoryName] = entered;
                             _spentAmounts.putIfAbsent(categoryName, () => 0);
                           });
-                          // TODO: Persist budget limit changes
+
+                          await _firestoreService.setBudgetLimit(
+                            uid: currentUser.uid,
+                            categoryName: categoryName,
+                            month: _selectedMonth,
+                            limit: entered,
+                          );
+
                           Navigator.of(context).pop();
                         },
                         child: const Text(
@@ -670,6 +679,189 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ),
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showAddBudgetDialog() async {
+    String selectedCategory =
+        _allExpenseCategories.firstWhere((c) => !_budgetedCategories.contains(c),
+            orElse: () => _allExpenseCategories.first);
+    final TextEditingController limitController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          backgroundColor: _themeService.cardBg,
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Text(
+                        'Add budget',
+                        style: TextStyle(
+                          color: _themeService.textMain,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Category',
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: selectedCategory,
+                      dropdownColor: _themeService.cardBg,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: _themeService.cardBg,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: _themeService.textSub.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: _themeService.primaryBlue),
+                        ),
+                      ),
+                      iconEnabledColor: _themeService.textMain,
+                      items: _allExpenseCategories
+                          .map(
+                            (category) => DropdownMenuItem<String>(
+                              value: category,
+                              child: Text(
+                                category,
+                                style: TextStyle(color: _themeService.textMain),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setStateDialog(() => selectedCategory = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Limit',
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: limitController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      textAlign: TextAlign.right,
+                      decoration: InputDecoration(
+                        hintText: '0.00',
+                        filled: true,
+                        fillColor: _themeService.cardBg,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: _themeService.textSub.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: _themeService.primaryBlue),
+                        ),
+                      ),
+                      style: TextStyle(color: _themeService.textMain),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _themeService.textMain,
+                              side: BorderSide(
+                                color: _themeService.textSub.withValues(alpha: 0.3),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text(
+                              'CANCEL',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _themeService.primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () async {
+                              final enteredLimit =
+                                  double.tryParse(limitController.text.trim());
+                              final currentUser = user;
+
+                              if (enteredLimit == null || currentUser == null) {
+                                Navigator.of(context).pop();
+                                return;
+                              }
+
+                              setState(() {
+                                _budgetedCategories.add(selectedCategory);
+                                _budgetLimits[selectedCategory] = enteredLimit;
+                                _spentAmounts.putIfAbsent(selectedCategory, () => 0);
+                              });
+
+                              await _firestoreService.setBudgetLimit(
+                                uid: currentUser.uid,
+                                categoryName: selectedCategory,
+                                month: _selectedMonth,
+                                limit: enteredLimit,
+                              );
+
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text(
+                              'SAVE',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
