@@ -235,7 +235,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF051C3F),
+      backgroundColor: _themeService.sheetColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -247,8 +247,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: _themeService.textMain,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -256,17 +256,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               const SizedBox(height: 16),
               Expanded(
                 child: ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(
-                        items[index],
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        onSelect(items[index]);
-                        Navigator.pop(context);
-                      },
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(
+                      items[index],
+                      style: TextStyle(color: _themeService.textMain),
+                    ),
+                    onTap: () {
+                      onSelect(items[index]);
+                      Navigator.pop(context);
+                    },
                     );
                   },
                 ),
@@ -282,7 +282,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     if (user == null) return;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF051C3F),
+      backgroundColor: _themeService.sheetColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -292,10 +292,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "Select Category",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _themeService.textMain,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -329,22 +329,23 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       itemCount: docs.length,
                       itemBuilder: (context, index) {
                         final doc = docs[index];
-                        final data = doc.data();
-                        final categoryName = data['name'] ?? 'Unnamed';
+                    final data = doc.data();
+                    final categoryName = data['name'] ?? 'Unnamed';
 
-                        return ListTile(
-                          leading: const CircleAvatar(
-                            backgroundColor: Colors.white10,
-                            child: Icon(Icons.category_rounded,
-                                color: Colors.white),
-                          ),
-                          title: Text(
-                            categoryName,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          onTap: () {
-                            setState(() {
-                              _selectedCategoryName = categoryName;
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor:
+                            _themeService.primaryBlue.withValues(alpha: 0.15),
+                        child: Icon(Icons.category_rounded,
+                            color: _themeService.primaryBlue),
+                      ),
+                      title: Text(
+                        categoryName,
+                        style: TextStyle(color: _themeService.textMain),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _selectedCategoryName = categoryName;
                               _selectedCategoryId = doc.id;
                             });
                             Navigator.pop(context);
@@ -364,319 +365,348 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color bgTop = const Color(0xFFE3F2FD);
-    final Color bgBottom = const Color(0xFFF3F8FC);
-    final Color primaryBlue = const Color(0xFF2979FF);
-    final Color textDark = const Color(0xFF102027);
+    return AnimatedBuilder(
+      animation: _themeService,
+      builder: (context, _) {
+        final Color bgTop = _themeService.bgTop;
+        final Color bgBottom = _themeService.bgBottom;
+        final Color primaryBlue = _themeService.primaryBlue;
+        final Color textDark = _themeService.textMain;
+        final Color textSub = _themeService.textSub;
+        final Color cardBg = _themeService.cardBg;
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [bgTop, bgBottom],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // --- Header ---
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 12.0,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        "CANCEL",
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      isEditing ? "Edit Transaction" : "Add Transaction",
-                      style: TextStyle(
-                        color: textDark,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    _isSaving || _isDeleting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isEditing)
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: _deleteTransaction,
-                                ),
-                              TextButton(
-                                onPressed:
-                                    isEditing ? _updateTransaction : _saveTransaction,
-                                child: Text(
-                                  "SAVE",
-                                  style: TextStyle(
-                                    color: primaryBlue,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                  ],
-                ),
+        return Scaffold(
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [bgTop, bgBottom],
               ),
-
-              // --- Scrollable Content ---
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      // --- Type Toggle ---
-                      Container(
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildTypeButton("Expense", _isExpense),
-                            const SizedBox(width: 20),
-                            _buildTypeButton("Income", !_isExpense),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      // --- Selectors ---
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _buildSelector(
-                                icon: Icons.account_balance_wallet,
-                                label: _selectedAccountName ?? 'ACCOUNT',
-                                onTap: () => _showSelectionSheet(
-                                  title: "Select Account",
-                                  items: ["Cash", "Bank", "Savings", "Card"],
-                                  onSelect: (val) =>
-                                      setState(() => _selectedAccountName = val),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildSelector(
-                                icon: Icons.category,
-                                label: _selectedCategoryName ?? 'CATEGORY',
-                                onTap: _showCategorySheet,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // --- Note Input ---
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: TextField(
-                          controller: _descController,
-                          textAlign: TextAlign.center,
-                          decoration: InputDecoration(
-                            hintText: "Add a note...",
-                            hintStyle: TextStyle(color: Colors.grey[400]),
-                            border: InputBorder.none,
-                          ),
-                          style: TextStyle(color: textDark, fontSize: 16),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // --- Amount Display ---
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              _displayAmount,
-                              style: TextStyle(
-                                color: textDark,
-                                fontSize: 64,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () => _onKeyTap('back'),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.backspace_outlined,
-                                  size: 20,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Only show BIG save button at bottom if Editing (to make it easier)
-                      if (isEditing)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _saveTransaction,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryBlue,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                "UPDATE TRANSACTION",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // --- Header ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 12.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            "CANCEL",
+                            style: TextStyle(
+                              color: textSub,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-
-              // --- Keypad (Fixed at Bottom) ---
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8ECEF),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(30),
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildKey("7"),
-                        _buildKey("8"),
-                        _buildKey("9"),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildKey("4"),
-                        _buildKey("5"),
-                        _buildKey("6"),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildKey("1"),
-                        _buildKey("2"),
-                        _buildKey("3"),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildKey("."),
-                        _buildKey("0"),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: _selectedDate,
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime(2030),
-                              );
-                              if (picked != null) {
-                                setState(() => _selectedDate = picked);
-                              }
-                            },
-                            child: Container(
-                              height: 60,
-                              margin: const EdgeInsets.symmetric(horizontal: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
+                        Text(
+                          isEditing ? "Edit Transaction" : "Add Transaction",
+                          style: TextStyle(
+                            color: textDark,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        _isSaving || _isDeleting
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: primaryBlue,
+                                ),
+                              )
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isEditing)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: _deleteTransaction,
+                                    ),
+                                  TextButton(
+                                    onPressed: isEditing
+                                        ? _updateTransaction
+                                        : _saveTransaction,
+                                    child: Text(
+                                      "SAVE",
+                                      style: TextStyle(
+                                        color: primaryBlue,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: Center(
-                                child: Text(
-                                  DateFormat('MMM dd').format(_selectedDate),
+                      ],
+                    ),
+                  ),
+
+                  // --- Scrollable Content ---
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // --- Type Toggle ---
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 10),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildTypeButton("Expense", _isExpense),
+                                const SizedBox(width: 20),
+                                _buildTypeButton("Income", !_isExpense),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // --- Selectors ---
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _buildSelector(
+                                    icon: Icons.account_balance_wallet,
+                                    label: _selectedAccountName ?? 'ACCOUNT',
+                                    onTap: () => _showSelectionSheet(
+                                      title: "Select Account",
+                                      items: ["Cash", "Bank", "Savings", "Card"],
+                                      onSelect: (val) =>
+                                          setState(() => _selectedAccountName = val),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _buildSelector(
+                                    icon: Icons.category,
+                                    label: _selectedCategoryName ?? 'CATEGORY',
+                                    onTap: _showCategorySheet,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // --- Note Input ---
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: TextField(
+                              controller: _descController,
+                              textAlign: TextAlign.center,
+                              decoration: InputDecoration(
+                                hintText: "Add a note...",
+                                hintStyle: TextStyle(color: textSub),
+                                border: InputBorder.none,
+                              ),
+                              style: TextStyle(color: textDark, fontSize: 16),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // --- Amount Display ---
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  _displayAmount,
                                   style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
                                     color: textDark,
+                                    fontSize: 64,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => _onKeyTap('back'),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: cardBg,
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: _themeService.isDarkMode
+                                                ? 0.25
+                                                : 0.05,
+                                          ),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      Icons.backspace_outlined,
+                                      size: 20,
+                                      color: textSub,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Only show BIG save button at bottom if Editing (to make it easier)
+                          if (isEditing)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton(
+                                  onPressed: _saveTransaction,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryBlue,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    "UPDATE TRANSACTION",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // --- Keypad (Fixed at Bottom) ---
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(30),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildKey("7"),
+                            _buildKey("8"),
+                            _buildKey("9"),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildKey("4"),
+                            _buildKey("5"),
+                            _buildKey("6"),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildKey("1"),
+                            _buildKey("2"),
+                            _buildKey("3"),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildKey("."),
+                            _buildKey("0"),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _selectedDate,
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime(2030),
+                                  );
+                                  if (picked != null) {
+                                    setState(() => _selectedDate = picked);
+                                  }
+                                },
+                                child: Container(
+                                  height: 60,
+                                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                                  decoration: BoxDecoration(
+                                    color: cardBg,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: _themeService.isDarkMode
+                                              ? 0.2
+                                              : 0.05,
+                                        ),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      DateFormat('MMM dd').format(_selectedDate),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: textDark,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _buildTypeButton(String label, bool isSelected) {
+    final Color primaryBlue = _themeService.primaryBlue;
+    final Color textSub = _themeService.textSub;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -686,14 +716,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       child: Row(
         children: [
           if (isSelected)
-            Icon(Icons.check_circle, size: 18, color: const Color(0xFF2D79F6)),
+            Icon(Icons.check_circle, size: 18, color: primaryBlue),
           if (isSelected) const SizedBox(width: 6),
           Text(
             label.toUpperCase(),
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: isSelected ? const Color(0xFF2D79F6) : Colors.grey,
+              color: isSelected ? primaryBlue : textSub,
             ),
           ),
         ],
@@ -706,19 +736,23 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     required String label,
     required VoidCallback onTap,
   }) {
+    final Color primaryBlue = _themeService.primaryBlue;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _themeService.cardBg,
           border: Border.all(
-            color: const Color(0xFF2D79F6).withValues(alpha: 0.3),
+            color: primaryBlue.withValues(alpha: 0.3),
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.withValues(alpha: 0.05),
+              color: Colors.black.withValues(
+                alpha: _themeService.isDarkMode ? 0.2 : 0.05,
+              ),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -726,12 +760,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF2D79F6)),
+            Icon(icon, color: primaryBlue),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
+                  color: _themeService.textMain,
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                 ),
@@ -745,6 +780,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Widget _buildKey(String value) {
+    final Color textColor = _themeService.textMain;
+
     return Expanded(
       child: GestureDetector(
         onTap: () => _onKeyTap(value),
@@ -752,11 +789,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           height: 60,
           margin: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _themeService.cardBg,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: Colors.black.withValues(
+                  alpha: _themeService.isDarkMode ? 0.2 : 0.05,
+                ),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -765,10 +804,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           child: Center(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1E26),
+                color: textColor,
               ),
             ),
           ),
