@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:smartspend/services/firestore_service.dart';
+import 'package:smartspend/services/theme_service.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   // Optional parameters for Edit Mode
@@ -25,13 +26,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String? _selectedAccountName;
   String? _selectedCategoryName;
   String? _selectedCategoryId;
-  String _type = 'Expense';
+  bool _isExpense = true;
   DateTime _selectedDate = DateTime.now();
   String _amountText = '';
   bool _isSaving = false;
   bool _isDeleting = false;
 
   final FirestoreService _firestoreService = FirestoreService();
+  final ThemeService _themeService = ThemeService();
   final user = FirebaseAuth.instance.currentUser;
 
   // Helper to check if we are editing
@@ -46,9 +48,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _selectedCategoryName = data['category'] ?? 'Uncategorized';
       _selectedCategoryId = data['categoryId'];
       _selectedAccountName = data['accountName'] ?? data['account'];
-      _type = (data['type'] ?? 'expense').toString() == 'income'
-          ? 'Income'
-          : 'Expense';
+      _isExpense = (data['type'] ?? 'expense').toString() != 'income';
 
       if (data['date'] != null) {
         _selectedDate = (data['date'] as Timestamp).toDate();
@@ -72,6 +72,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     return _amountText;
   }
 
+  String get _typeString => _isExpense ? 'expense' : 'income';
+
   void _onKeyTap(String value) {
     setState(() {
       if (value == 'back') {
@@ -90,88 +92,103 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     });
   }
 
-  Future<void> _saveTransaction() async {
-    if (user == null) return;
+  Map<String, dynamic>? _buildTransactionData({required bool preserveCreatedAt}) {
+    if (user == null) return null;
 
     if (_amountText.isEmpty || double.tryParse(_amountText) == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
       );
-      return;
+      return null;
     }
 
     if (_selectedAccountName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please choose an account')),
       );
-      return;
+      return null;
     }
 
-    if (_type == 'Expense' && _selectedCategoryName == null) {
+    if (_selectedCategoryName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please choose a category')),
       );
-      return;
+      return null;
     }
 
     if (_descController.text.isEmpty) {
       _descController.text = _selectedCategoryName ?? 'Transaction';
     }
 
+    final double amount = double.parse(_amountText);
+    final double finalAmount = _isExpense ? -amount : amount;
+    final selectedCategoryName = _selectedCategoryName ?? 'Uncategorized';
+    final selectedAccountName = _selectedAccountName ?? 'ACCOUNT';
+
+    return {
+      'userId': user!.uid,
+      'uid': user!.uid,
+      'amount': finalAmount,
+      'type': _typeString,
+      'category': selectedCategoryName,
+      'categoryId': _selectedCategoryId,
+      'accountName': selectedAccountName,
+      'account': selectedAccountName,
+      'name': _descController.text.trim(),
+      'date': Timestamp.fromDate(_selectedDate),
+      'createdAt': preserveCreatedAt
+          ? widget.transactionData?['createdAt'] ?? FieldValue.serverTimestamp()
+          : FieldValue.serverTimestamp(),
+    };
+  }
+
+  Future<void> _saveTransaction() async {
     setState(() => _isSaving = true);
 
     try {
-      final double amount = double.parse(_amountText);
-      final double finalAmount = _type == 'Expense' ? -amount : amount;
+      final data = _buildTransactionData(preserveCreatedAt: false);
+      if (data == null) return;
 
-      final selectedCategoryName = _selectedCategoryName ?? 'Uncategorized';
-      final selectedAccountName = _selectedAccountName ?? 'ACCOUNT';
+      await FirebaseFirestore.instance.collection('transactions').add(data);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(
+          const SnackBar(content: Text('Transaction saved!')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
-      final data = {
-        'userId': user!.uid,
-        'uid': user!.uid,
-        'amount': finalAmount,
-        'type': _type.toLowerCase(),
-        'category': selectedCategoryName,
-        'categoryId': _selectedCategoryId,
-        'accountName': selectedAccountName,
-        'account': selectedAccountName,
-        'name': _descController.text.trim(),
-        'date': Timestamp.fromDate(_selectedDate),
-        'createdAt': isEditing
-            ? widget.transactionData!['createdAt']
-            : FieldValue.serverTimestamp(), // Keep original creation time if editing
-      };
+  Future<void> _updateTransaction() async {
+    if (!isEditing) return;
+    setState(() => _isSaving = true);
 
-        if (isEditing) {
-          // UPDATE existing document
-          await FirebaseFirestore.instance
-              .collection('transactions')
-              .doc(widget.transactionId)
-              .update(data);
+    try {
+      final data = _buildTransactionData(preserveCreatedAt: true);
+      if (data == null) return;
 
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(
-              const SnackBar(content: Text('Transaction updated!')),
-            );
-          }
-        } else {
-          // CREATE new document
-          await FirebaseFirestore.instance.collection('transactions').add(data);
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(
-              const SnackBar(content: Text('Transaction saved!')),
-            );
-          }
-        }
+      await _firestoreService.updateTransaction(
+        uid: user!.uid,
+        transactionId: widget.transactionId!,
+        data: data,
+      );
 
-        if (mounted) {
-          Navigator.pop(context);
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transaction updated!')),
+        );
+        Navigator.pop(context);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -262,6 +279,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   void _showCategorySheet() {
+    if (user == null) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF051C3F),
@@ -285,8 +303,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               const SizedBox(height: 16),
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream:
-                      _firestoreService.streamExpenseCategories(user!.uid),
+                  stream: _firestoreService.streamCategoriesByType(
+                    uid: user!.uid,
+                    type: _typeString,
+                  ),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState ==
                         ConnectionState.waiting) {
@@ -296,10 +316,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     }
 
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Text(
-                          'No expense categories yet',
-                          style: TextStyle(color: Colors.white70),
+                          'No categories yet',
+                          style: TextStyle(color: _themeService.textSub),
                         ),
                       );
                     }
@@ -388,30 +408,35 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    // Delete Button if Editing, otherwise Spacer/Loader
                     _isSaving || _isDeleting
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : isEditing
-                        ? IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
-                            ),
-                            onPressed: _deleteTransaction,
-                          )
-                        : TextButton(
-                            onPressed: _saveTransaction,
-                            child: Text(
-                              "SAVE",
-                              style: TextStyle(
-                                color: primaryBlue,
-                                fontWeight: FontWeight.bold,
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isEditing)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: _deleteTransaction,
+                                ),
+                              TextButton(
+                                onPressed:
+                                    isEditing ? _updateTransaction : _saveTransaction,
+                                child: Text(
+                                  "SAVE",
+                                  style: TextStyle(
+                                    color: primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                   ],
                 ),
@@ -428,9 +453,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildTypeButton("Expense", _type == 'Expense'),
+                            _buildTypeButton("Expense", _isExpense),
                             const SizedBox(width: 20),
-                            _buildTypeButton("Income", _type == 'Income'),
+                            _buildTypeButton("Income", !_isExpense),
                           ],
                         ),
                       ),
@@ -655,7 +680,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _type = label.toUpperCase() == 'INCOME' ? 'Income' : 'Expense';
+          _isExpense = label.toUpperCase() != 'INCOME';
         });
       },
       child: Row(

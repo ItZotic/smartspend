@@ -128,6 +128,19 @@ class FirestoreService {
         .snapshots();
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamCategoriesByType({
+    required String uid,
+    required String type,
+  }) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('categories')
+        .where('type', isEqualTo: type)
+        .orderBy('name')
+        .snapshots();
+  }
+
   Future<String> addTransaction({
     required String uid,
     required double amount,
@@ -174,6 +187,17 @@ class FirestoreService {
     query = query.orderBy('date', descending: true);
 
     return query.snapshots();
+  }
+
+  Future<void> updateTransaction({
+    required String uid,
+    required String transactionId,
+    required Map<String, dynamic> data,
+  }) async {
+    await FirebaseFirestore.instance
+        .collection('transactions')
+        .doc(transactionId)
+        .update(data);
   }
 
   Future<void> setBudget({
