@@ -29,30 +29,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
 
-  final List<_CategoryItem> _incomeCategories = [
-    _CategoryItem(id: 'income_salary', type: 'income', name: 'Salary', iconIndex: 0),
-    _CategoryItem(id: 'income_awards', type: 'income', name: 'Awards', iconIndex: 1),
-    _CategoryItem(id: 'income_grants', type: 'income', name: 'Grants', iconIndex: 2),
-    _CategoryItem(id: 'income_rental', type: 'income', name: 'Rental', iconIndex: 3),
-    _CategoryItem(id: 'income_investments', type: 'income', name: 'Investments', iconIndex: 4),
-    _CategoryItem(id: 'income_refunds', type: 'income', name: 'Refunds', iconIndex: 5),
-    _CategoryItem(id: 'income_gifts', type: 'income', name: 'Gifts', iconIndex: 6),
-    _CategoryItem(id: 'income_interest', type: 'income', name: 'Interest', iconIndex: 7),
-  ];
-
-  final List<_CategoryItem> _expenseCategories = [
-    _CategoryItem(id: 'expense_food', type: 'expense', name: 'Food & Dining', iconIndex: 0),
-    _CategoryItem(id: 'expense_transport', type: 'expense', name: 'Transportation', iconIndex: 1),
-    _CategoryItem(id: 'expense_bills', type: 'expense', name: 'Bills', iconIndex: 2),
-    _CategoryItem(id: 'expense_groceries', type: 'expense', name: 'Groceries', iconIndex: 3),
-    _CategoryItem(id: 'expense_entertainment', type: 'expense', name: 'Entertainment', iconIndex: 4),
-    _CategoryItem(id: 'expense_shopping', type: 'expense', name: 'Shopping', iconIndex: 5),
-    _CategoryItem(id: 'expense_healthcare', type: 'expense', name: 'Healthcare', iconIndex: 6),
-    _CategoryItem(id: 'expense_education', type: 'expense', name: 'Education', iconIndex: 7),
-    _CategoryItem(id: 'expense_travel', type: 'expense', name: 'Travel', iconIndex: 8),
-    _CategoryItem(id: 'expense_utilities', type: 'expense', name: 'Utilities', iconIndex: 0),
-  ];
-
   final List<Color> _categoryColors = const [
     Color(0xFF64B6FF),
     Color(0xFF7BD6C8),
@@ -116,12 +92,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         children: [
                           _buildSection(
                             title: "Income categories",
-                            categories: _incomeCategories,
+                            type: 'income',
                           ),
                           const SizedBox(height: 24),
                           _buildSection(
                             title: "Expense categories",
-                            categories: _expenseCategories,
+                            type: 'expense',
                           ),
                           const SizedBox(height: 24),
                           _buildAddCategoryButton(),
@@ -166,7 +142,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Widget _buildSection({
     required String title,
-    required List<_CategoryItem> categories,
+    required String type,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,12 +161,58 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           color: _themeService.textSub.withValues(alpha: 0.15),
         ),
         const SizedBox(height: 12),
-        Column(
-          children: [
-            for (final category in categories)
-              _buildCategoryRow(category: category),
-          ],
-        ),
+        user == null
+            ? Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'Please log in to view categories.',
+                  style: TextStyle(color: _themeService.textSub),
+                ),
+              )
+            : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _firestoreService.streamCategoriesByType(
+                  uid: user!.uid,
+                  type: type,
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  final docs = snapshot.data?.docs ?? [];
+
+                  if (docs.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'No ${type.toLowerCase()} categories yet.',
+                        style: TextStyle(color: _themeService.textSub),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      for (final doc in docs)
+                        Builder(builder: (context) {
+                          final data = doc.data();
+                          return _buildCategoryRow(
+                            category: _CategoryItem(
+                              id: doc.id,
+                              type: (data['type'] as String?) ?? type,
+                              name: (data['name'] as String?) ?? 'Unnamed',
+                              iconIndex:
+                                  (data['iconIndex'] as num?)?.toInt() ?? 0,
+                            ),
+                          );
+                        }),
+                    ],
+                  );
+                },
+              ),
       ],
     );
   }
@@ -454,18 +476,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 return;
                               }
 
-                              setState(() {
-                                final list =
-                                    category.type == 'income' ? _incomeCategories : _expenseCategories;
-                                final index =
-                                    list.indexWhere((item) => item.id == category.id);
-
-                                if (index != -1) {
-                                  list[index].name = updatedName;
-                                  list[index].iconIndex = selectedIconIndex;
-                                }
-                              });
-
                               _firestoreService.updateCategory(
                                 uid: currentUser.uid,
                                 categoryId: category.id,
@@ -530,14 +540,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   Navigator.of(context).pop();
                   return;
                 }
-
-                setState(() {
-                  if (category.type == 'income') {
-                    _incomeCategories.removeWhere((item) => item.id == category.id);
-                  } else {
-                    _expenseCategories.removeWhere((item) => item.id == category.id);
-                  }
-                });
 
                 await _firestoreService.deleteCategory(
                   uid: currentUser.uid,
@@ -751,27 +753,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
                               final type = selectedType.toLowerCase();
 
-                              final docRef = await _firestoreService.addUserCategory(
+                              await _firestoreService.addUserCategory(
                                 uid: currentUser.uid,
                                 name: name,
                                 type: type,
                                 iconIndex: selectedIconIndex,
                               );
-
-                              setState(() {
-                                final newCategory = _CategoryItem(
-                                  id: docRef.id,
-                                  type: type,
-                                  name: name,
-                                  iconIndex: selectedIconIndex,
-                                );
-
-                                if (type == 'income') {
-                                  _incomeCategories.add(newCategory);
-                                } else {
-                                  _expenseCategories.add(newCategory);
-                                }
-                              });
 
                               Navigator.of(context).pop();
                             },

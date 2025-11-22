@@ -239,8 +239,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     required List<String> items,
     required ValueChanged<String> onSelect,
   }) {
-    final textColor =
-        _themeService.isDarkMode ? Colors.black87 : _themeService.textMain;
+    final textColor = _themeService.textMain;
+    final sheetBg = _themeService.isDarkMode ? _themeService.cardBg : Colors.white;
+    final borderColor = _themeService.primaryBlue.withValues(alpha: 0.2);
+    final dividerColor = _themeService.textSub.withValues(alpha: 0.15);
+    final handleColor = _themeService.textSub.withValues(alpha: 0.5);
 
     showModalBottomSheet(
       context: context,
@@ -257,10 +260,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(
-                    color: _themeService.primaryBlue.withValues(alpha: 0.3),
-                  ),
+                  color: sheetBg,
+                  border: Border.all(color: borderColor),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(24),
                     topRight: Radius.circular(24),
@@ -274,7 +275,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey[400],
+                          color: handleColor,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -294,7 +295,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         itemCount: items.length,
                         separatorBuilder: (_, __) => Divider(
                           height: 1,
-                          color: Colors.grey[300],
+                          color: dividerColor,
                         ),
                         itemBuilder: (context, index) {
                           final label = items[index];
@@ -324,13 +325,16 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   void _showCategorySheet() {
     if (user == null) return;
 
+    final textColor = _themeService.textMain;
+    final sheetBg = _themeService.isDarkMode ? _themeService.cardBg : Colors.white;
+    final borderColor = _themeService.primaryBlue.withValues(alpha: 0.2);
+    final dividerColor = _themeService.textSub.withValues(alpha: 0.15);
+    final handleColor = _themeService.textSub.withValues(alpha: 0.5);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final textColor =
-            _themeService.isDarkMode ? Colors.black87 : _themeService.textMain;
-
         return SafeArea(
           top: false,
           child: Container(
@@ -343,10 +347,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(
-                    color: _themeService.primaryBlue.withValues(alpha: 0.3),
-                  ),
+                  color: sheetBg,
+                  border: Border.all(color: borderColor),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(24),
                     topRight: Radius.circular(24),
@@ -360,7 +362,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey[400],
+                          color: handleColor,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -385,8 +387,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
+                            return Center(
+                              child: CircularProgressIndicator(
+                                color: _themeService.primaryBlue,
+                              ),
                             );
                           }
 
@@ -394,12 +398,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                               snapshot.data!.docs.isEmpty) {
                             return Center(
                               child: Text(
-                                'No $_typeString categories yet',
-                                style: TextStyle(
-                                  color: _themeService.isDarkMode
-                                      ? Colors.black54
-                                      : _themeService.textSub,
-                                ),
+                                _typeString == 'income'
+                                    ? 'No income categories yet'
+                                    : 'No expense categories yet',
+                                style: TextStyle(color: _themeService.textSub),
                               ),
                             );
                           }
@@ -410,7 +412,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                             itemCount: docs.length,
                             separatorBuilder: (_, __) => Divider(
                               height: 1,
-                              color: Colors.grey[300],
+                              color: dividerColor,
                             ),
                             itemBuilder: (context, index) {
                               final doc = docs[index];

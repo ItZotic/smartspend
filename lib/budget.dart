@@ -21,19 +21,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   DateTime _selectedMonth =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
 
-  final List<String> _allExpenseCategories = [
-    'Food & Dining',
-    'Transportation',
-    'Bills',
-    'Groceries',
-    'Entertainment',
-    'Shopping',
-    'Healthcare',
-    'Education',
-    'Travel',
-    'Utilities',
-  ];
-
   final Set<String> _budgetedCategories = {};
   final Map<String, double> _budgetLimits = {};
   final Map<String, double> _spentAmounts = {};
@@ -64,65 +51,103 @@ class _BudgetScreenState extends State<BudgetScreen> {
           );
         }
 
-        return Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [_themeService.bgTop, _themeService.bgBottom],
-              ),
-            ),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 12.0,
-                    ),
-                    child: Center(
-                      child: Text(
-                        "Budgets",
-                        style: TextStyle(
-                          color: _themeService.textMain,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: _firestoreService.streamCategoriesByType(
+            uid: user!.uid,
+            type: 'expense',
+          ),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(
+                  color: _themeService.primaryBlue,
+                ),
+              );
+            }
+
+            final expenseCategories = snapshot.data?.docs
+                    .map((doc) => (doc.data()['name'] as String?)?.trim())
+                    .whereType<String>()
+                    .where((name) => name.isNotEmpty)
+                    .toList() ??
+                [];
+
+            return Scaffold(
+              body: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [_themeService.bgTop, _themeService.bgBottom],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 12.0,
+                        ),
+                        child: Center(
+                          child: Text(
+                            "Budgets",
+                            style: TextStyle(
+                              color: _themeService.textMain,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      controller: widget.scrollController,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      children: [
-                        _buildMonthSelector(),
-                        const SizedBox(height: 16),
-                        _buildBudgetSummaryCard(
-                          totalBudget: _totalBudget,
-                          totalSpent: _totalSpent,
+                      Expanded(
+                        child: ListView(
+                          controller: widget.scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          children: [
+                            _buildMonthSelector(),
+                            const SizedBox(height: 16),
+                            _buildBudgetSummaryCard(
+                              totalBudget: _totalBudget,
+                              totalSpent: _totalSpent,
+                            ),
+                            const SizedBox(height: 24),
+                            _buildBudgetedSection(expenseCategories),
+                            const SizedBox(height: 24),
+                            _buildNotBudgetedSection(expenseCategories),
+                            const SizedBox(height: 80),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-                        _buildBudgetedSection(),
-                        const SizedBox(height: 24),
-                        _buildNotBudgetedSection(),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          floatingActionButton: FloatingActionButton(
-            backgroundColor: _themeService.primaryBlue,
-            onPressed: _showAddBudgetDialog,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
+              floatingActionButton: FloatingActionButton(
+                backgroundColor: _themeService.primaryBlue,
+                onPressed: () {
+                  if (expenseCategories.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Add an expense category first to set a budget.',
+                          style: TextStyle(color: _themeService.textMain),
+                        ),
+                        backgroundColor: _themeService.cardBg,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  _showAddBudgetDialog(expenseCategories);
+                },
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            );
+          },
         );
       },
     );
@@ -242,9 +267,30 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  Widget _buildBudgetedSection() {
+  Widget _buildBudgetedSection(List<String> allCategories) {
+    if (allCategories.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _themeService.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Text(
+          "Add an expense category to start budgeting.",
+          style: TextStyle(color: _themeService.textSub, fontSize: 14),
+        ),
+      );
+    }
+
     final budgeted =
-        _allExpenseCategories.where(_budgetedCategories.contains).toList();
+        allCategories.where(_budgetedCategories.contains).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,9 +441,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  Widget _buildNotBudgetedSection() {
+  Widget _buildNotBudgetedSection(List<String> allCategories) {
+    if (allCategories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final notBudgeted =
-        _allExpenseCategories.where((c) => !_budgetedCategories.contains(c));
+        allCategories.where((c) => !_budgetedCategories.contains(c));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,10 +736,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  Future<void> _showAddBudgetDialog() async {
-    String selectedCategory =
-        _allExpenseCategories.firstWhere((c) => !_budgetedCategories.contains(c),
-            orElse: () => _allExpenseCategories.first);
+  Future<void> _showAddBudgetDialog(List<String> categories) async {
+    if (categories.isEmpty) return;
+
+    String selectedCategory = categories.firstWhere(
+      (c) => !_budgetedCategories.contains(c),
+      orElse: () => categories.first,
+    );
     final TextEditingController limitController = TextEditingController();
 
     await showDialog(
@@ -745,7 +798,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         ),
                       ),
                       iconEnabledColor: _themeService.textMain,
-                      items: _allExpenseCategories
+                      items: categories
                           .map(
                             (category) => DropdownMenuItem<String>(
                               value: category,
