@@ -16,16 +16,10 @@ class _DefaultCategory {
 
 const List<_DefaultCategory> _defaultExpenseCategories = [
   _DefaultCategory(
-    id: 'clothing',
-    name: 'Clothing',
-    icon: 'checkroom',
-    color: 0xFF8E24AA,
-  ),
-  _DefaultCategory(
-    id: 'shopping',
-    name: 'Shopping',
-    icon: 'shopping_bag_outlined',
-    color: 0xFFFF9800,
+    id: 'food_dining',
+    name: 'Food & Dining',
+    icon: 'restaurant',
+    color: 0xFF2979FF,
   ),
   _DefaultCategory(
     id: 'transportation',
@@ -34,16 +28,86 @@ const List<_DefaultCategory> _defaultExpenseCategories = [
     color: 0xFF455A64,
   ),
   _DefaultCategory(
+    id: 'bills',
+    name: 'Bills',
+    icon: 'receipt_long_outlined',
+    color: 0xFF00897B,
+  ),
+  _DefaultCategory(
+    id: 'groceries',
+    name: 'Groceries',
+    icon: 'shopping_cart_outlined',
+    color: 0xFFFF7043,
+  ),
+  _DefaultCategory(
     id: 'entertainment',
     name: 'Entertainment',
     icon: 'movie_outlined',
     color: 0xFFE53935,
   ),
   _DefaultCategory(
-    id: 'bills',
-    name: 'Bills',
-    icon: 'receipt_long_outlined',
+    id: 'shopping',
+    name: 'Shopping',
+    icon: 'shopping_bag_outlined',
+    color: 0xFFFF9800,
+  ),
+  _DefaultCategory(
+    id: 'clothing',
+    name: 'Clothing',
+    icon: 'checkroom',
+    color: 0xFF8E24AA,
+  ),
+];
+
+// 🔹 Default INCOME categories – match your Income list
+const List<_DefaultCategory> _defaultIncomeCategories = [
+  _DefaultCategory(
+    id: 'salary',
+    name: 'Salary',
+    icon: 'paid',
+    color: 0xFF2E7D32,
+  ),
+  _DefaultCategory(
+    id: 'awards',
+    name: 'Awards',
+    icon: 'military_tech',
+    color: 0xFF6A1B9A,
+  ),
+  _DefaultCategory(
+    id: 'grants',
+    name: 'Grants',
+    icon: 'school',
+    color: 0xFF3949AB,
+  ),
+  _DefaultCategory(
+    id: 'rental',
+    name: 'Rental',
+    icon: 'home_work',
     color: 0xFF00897B,
+  ),
+  _DefaultCategory(
+    id: 'investments',
+    name: 'Investments',
+    icon: 'trending_up',
+    color: 0xFFF9A825,
+  ),
+  _DefaultCategory(
+    id: 'refunds',
+    name: 'Refunds',
+    icon: 'replay',
+    color: 0xFF039BE5,
+  ),
+  _DefaultCategory(
+    id: 'gifts',
+    name: 'Gifts',
+    icon: 'card_giftcard',
+    color: 0xFFD81B60,
+  ),
+  _DefaultCategory(
+    id: 'interest',
+    name: 'Interest',
+    icon: 'savings',
+    color: 0xFF5D4037,
   ),
 ];
 
@@ -82,29 +146,40 @@ class FirestoreService {
       'name': trimmedName,
       'type': type,
       'owner': uid,
-      'icon': '', // Default icon
+      'icon': '',
     });
 
     return doc.id;
   }
 
+  /// Seed BOTH default income + expense categories into the top-level `categories` collection.
   Future<void> ensureDefaultCategories({required String uid}) async {
-    for (final category in _defaultExpenseCategories) {
-      final docRef =
-          _firestore.collection('categories').doc('${uid}_${category.id}');
-      final snapshot = await docRef.get();
-      if (snapshot.exists) continue;
-      await docRef.set({
-        'name': category.name,
-        'type': 'expense',
-        'owner': uid,
-        'icon': category.icon,
-        'color': category.color,
-        'isDefault': true,
-      });
+    Future<void> _ensureForList(
+      List<_DefaultCategory> list,
+      String type,
+    ) async {
+      for (final category in list) {
+        final docRef =
+            _firestore.collection('categories').doc('${uid}_${category.id}');
+        final snapshot = await docRef.get();
+        if (snapshot.exists) continue;
+
+        await docRef.set({
+          'name': category.name,
+          'type': type, // 'income' or 'expense'
+          'owner': uid,
+          'icon': category.icon,
+          'color': category.color,
+          'isDefault': true,
+        });
+      }
     }
+
+    await _ensureForList(_defaultExpenseCategories, 'expense');
+    await _ensureForList(_defaultIncomeCategories, 'income');
   }
 
+  /// Generic stream of user categories by type, from top-level `categories`.
   Stream<QuerySnapshot<Map<String, dynamic>>> streamUserCategories({
     required String uid,
     required String type,
@@ -113,43 +188,22 @@ class FirestoreService {
         .collection('categories')
         .where('owner', isEqualTo: uid)
         .where('type', isEqualTo: type)
-        // .orderBy('name') // This line is commented out to fix the read error
-        .snapshots();
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> streamExpenseCategories(
-      String uid) {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('categories')
-        .where('type', isEqualTo: 'expense')
         .orderBy('name')
         .snapshots();
   }
 
+  /// Convenience wrapper for expenses.
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamExpenseCategories(
+      String uid) {
+    return streamUserCategories(uid: uid, type: 'expense');
+  }
+
+  /// Main API used by Add Transaction / others.
   Stream<QuerySnapshot<Map<String, dynamic>>> streamCategoriesByType({
     required String uid,
     required String type,
   }) {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('categories')
-        .where('type', isEqualTo: type)
-        .orderBy('name')
-        .snapshots();
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> streamAllCategories({
-    required String uid,
-  }) {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('categories')
-        .orderBy('name')
-        .snapshots();
+    return streamUserCategories(uid: uid, type: type);
   }
 
   Future<String> addTransaction({
@@ -180,9 +234,8 @@ class FirestoreService {
     DateTime? start,
     DateTime? end,
   }) {
-    Query<Map<String, dynamic>> query = _firestore
-        .collection('transactions')
-        .where('uid', isEqualTo: uid);
+    Query<Map<String, dynamic>> query =
+        _firestore.collection('transactions').where('uid', isEqualTo: uid);
 
     if (start != null) {
       query = query.where(
@@ -192,7 +245,10 @@ class FirestoreService {
     }
 
     if (end != null) {
-      query = query.where('date', isLessThanOrEqualTo: Timestamp.fromDate(end));
+      query = query.where(
+        'date',
+        isLessThanOrEqualTo: Timestamp.fromDate(end),
+      );
     }
 
     query = query.orderBy('date', descending: true);
@@ -205,10 +261,7 @@ class FirestoreService {
     required String transactionId,
     required Map<String, dynamic> data,
   }) async {
-    await FirebaseFirestore.instance
-        .collection('transactions')
-        .doc(transactionId)
-        .update(data);
+    await _firestore.collection('transactions').doc(transactionId).update(data);
   }
 
   Future<void> setBudget({
@@ -250,7 +303,6 @@ class FirestoreService {
     );
   }
 
-  // 🔽 --- THIS FUNCTION IS NOW FIXED --- 🔽
   Future<void> addCategory({
     required String uid,
     required String name,
@@ -263,8 +315,6 @@ class FirestoreService {
       throw ArgumentError('Category name cannot be empty');
     }
 
-    // The complex query that was failing has been removed.
-    // We now add the category directly to fix the PERMISSION_DENIED error.
     await _firestore.collection('categories').add({
       'name': trimmedName,
       'type': type,
@@ -299,7 +349,9 @@ class FirestoreService {
     String? name,
     int? iconIndex,
   }) async {
-    final updates = <String, dynamic>{'owner': uid};
+    final updates = <String, dynamic>{
+      'owner': uid,
+    };
 
     if (name != null) {
       updates['name'] = name.trim();
