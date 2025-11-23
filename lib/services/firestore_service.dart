@@ -239,7 +239,7 @@ class FirestoreService {
         _firestore.collection('transactions').where('uid', isEqualTo: uid);
 
     if (accountName != null) {
-      query = query.where('account', isEqualTo: accountName);
+      query = query.where('accountName', isEqualTo: accountName);
     }
 
     if (start != null) {
