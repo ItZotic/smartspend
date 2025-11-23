@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,6 +17,23 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
 
   int _currentView = 0;
   String _sortBy = 'closest';
+
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // periodic refresh so daysLeft updates automatically (runs every hour)
+    _refreshTimer = Timer.periodic(const Duration(hours: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -240,24 +258,28 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
           .where('uid', isEqualTo: user!.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
         final docs = snapshot.data?.docs ?? [];
 
-        if (docs.isEmpty)
+        if (docs.isEmpty) {
           return Center(
             child: Text(
               "No subscriptions yet",
               style: TextStyle(color: _themeService.textSub),
             ),
           );
+        }
 
         double totalMonthly = 0;
         List<Map<String, dynamic>> upcoming = [];
         final now = DateTime.now();
 
         for (var doc in docs) {
-          final data = doc.data() as Map<String, dynamic>;
+          // make a local mutable copy so we can add computed fields safely
+          final raw = doc.data() as Map<String, dynamic>;
+          final data = Map<String, dynamic>.from(raw);
           totalMonthly += (data['amount'] as num?)?.toDouble() ?? 0.0;
 
           int day = data['paymentDay'] ?? 1;
@@ -272,9 +294,28 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
           upcoming.add(data);
         }
 
-        upcoming.sort(
-          (a, b) => (a['daysLeft'] as int).compareTo(b['daysLeft'] as int),
-        );
+        // determine upcoming list, then sort according to selected _sortBy
+        upcoming.sort((a, b) {
+          // safe getters with defaults
+          final int aDays = (a['daysLeft'] is int) ? a['daysLeft'] as int : 9999;
+          final int bDays = (b['daysLeft'] is int) ? b['daysLeft'] as int : 9999;
+          final double aAmt = (a['amount'] as num?)?.toDouble() ?? 0.0;
+          final double bAmt = (b['amount'] as num?)?.toDouble() ?? 0.0;
+          final String aName = (a['name'] as String?)?.toLowerCase() ?? '';
+          final String bName = (b['name'] as String?)?.toLowerCase() ?? '';
+
+          switch (_sortBy) {
+            case 'price_high':
+              return bAmt.compareTo(aAmt);
+            case 'price_low':
+              return aAmt.compareTo(bAmt);
+            case 'name':
+              return aName.compareTo(bName);
+            case 'closest':
+            default:
+              return aDays.compareTo(bDays);
+          }
+        });
 
         return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -349,10 +390,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                 ),
               )
             else
-              ...upcoming
-                  .take(3)
-                  .map((data) => _buildUpcomingCard(data))
-                  .toList(),
+              ...upcoming.map((data) => _buildUpcomingCard(data)),
 
             const SizedBox(height: 80),
           ],
@@ -373,23 +411,27 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
           .where('uid', isEqualTo: user!.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
         final docs = snapshot.data?.docs ?? [];
 
-        if (docs.isEmpty)
+        if (docs.isEmpty) {
           return Center(
             child: Text(
               "No subscriptions to edit",
               style: TextStyle(color: _themeService.textSub),
             ),
           );
+        }
 
         List<Map<String, dynamic>> sortedList = [];
         final now = DateTime.now();
 
         for (var doc in docs) {
-          final data = doc.data() as Map<String, dynamic>;
+          // use a mutable copy to compute derived fields (keeps original snapshot intact)
+          final raw = doc.data() as Map<String, dynamic>;
+          final data = Map<String, dynamic>.from(raw);
           data['id'] = doc.id;
 
           int day = data['paymentDay'] ?? 1;
@@ -405,18 +447,23 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         }
 
         sortedList.sort((a, b) {
+          final double aAmt = (a['amount'] as num?)?.toDouble() ?? 0.0;
+          final double bAmt = (b['amount'] as num?)?.toDouble() ?? 0.0;
+          final String aName = (a['name'] as String?)?.toLowerCase() ?? '';
+          final String bName = (b['name'] as String?)?.toLowerCase() ?? '';
+          final int aDays = (a['daysLeft'] is int) ? a['daysLeft'] as int : 9999;
+          final int bDays = (b['daysLeft'] is int) ? b['daysLeft'] as int : 9999;
+
           switch (_sortBy) {
             case 'price_high':
-              return (b['amount'] as num).compareTo(a['amount'] as num);
+              return bAmt.compareTo(aAmt);
             case 'price_low':
-              return (a['amount'] as num).compareTo(b['amount'] as num);
+              return aAmt.compareTo(bAmt);
             case 'name':
-              return (a['name'] as String).toLowerCase().compareTo(
-                (b['name'] as String).toLowerCase(),
-              );
+              return aName.compareTo(bName);
             case 'closest':
             default:
-              return (a['daysLeft'] as int).compareTo(b['daysLeft'] as int);
+              return aDays.compareTo(bDays);
           }
         });
 
@@ -451,7 +498,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                 onTap: () => _showSubscriptionDialog(doc),
                 child: _buildEditCard(data),
               );
-            }).toList(),
+            }),
             const SizedBox(height: 80),
           ],
         );
@@ -735,10 +782,11 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                     onChanged: (val) {
                       setModalState(() {
                         selectedService = val!;
-                        if (val != "Custom")
+                        if (val != "Custom") {
                           nameCtrl.text = val;
-                        else
+                        } else {
                           nameCtrl.clear();
+                        }
                       });
                     },
                   ),
