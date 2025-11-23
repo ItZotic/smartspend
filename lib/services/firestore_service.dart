@@ -154,7 +154,7 @@ class FirestoreService {
 
   /// Seed BOTH default income + expense categories into the top-level `categories` collection.
   Future<void> ensureDefaultCategories({required String uid}) async {
-    Future<void> _ensureForList(
+    Future<void> ensureForList(
       List<_DefaultCategory> list,
       String type,
     ) async {
@@ -175,8 +175,8 @@ class FirestoreService {
       }
     }
 
-    await _ensureForList(_defaultExpenseCategories, 'expense');
-    await _ensureForList(_defaultIncomeCategories, 'income');
+    await ensureForList(_defaultExpenseCategories, 'expense');
+    await ensureForList(_defaultIncomeCategories, 'income');
   }
 
   /// Generic stream of user categories by type, from top-level `categories`.
@@ -316,6 +316,51 @@ class FirestoreService {
       limit: limit,
       month: month,
     );
+  }
+
+  Future<void> setMonthlyBudget({
+    required String uid,
+    required int year,
+    required int month,
+    required double amount,
+  }) async {
+    final docId = "${uid}_${year}_${month.toString().padLeft(2, '0')}";
+    final docRef = _firestore.collection('budgets').doc(docId);
+
+    final existingDoc = await docRef.get();
+    final data = {
+      'uid': uid,
+      'year': year,
+      'month': month,
+      'amount': amount,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (existingDoc.exists) {
+      await docRef.update(data);
+    } else {
+      await docRef.set({
+        ...data,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<double?> getMonthlyBudget({
+    required String uid,
+    required int year,
+    required int month,
+  }) async {
+    final docId = "${uid}_${year}_${month.toString().padLeft(2, '0')}";
+    final snapshot =
+        await _firestore.collection('budgets').doc(docId).get();
+
+    if (!snapshot.exists) {
+      return null;
+    }
+
+    final data = snapshot.data();
+    return (data?['amount'] as num?)?.toDouble();
   }
 
   Future<void> addCategory({
