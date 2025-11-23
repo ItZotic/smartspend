@@ -154,7 +154,7 @@ class FirestoreService {
 
   /// Seed BOTH default income + expense categories into the top-level `categories` collection.
   Future<void> ensureDefaultCategories({required String uid}) async {
-    Future<void> _ensureForList(
+    Future<void> ensureForList(
       List<_DefaultCategory> list,
       String type,
     ) async {
@@ -175,8 +175,8 @@ class FirestoreService {
       }
     }
 
-    await _ensureForList(_defaultExpenseCategories, 'expense');
-    await _ensureForList(_defaultIncomeCategories, 'income');
+    await ensureForList(_defaultExpenseCategories, 'expense');
+    await ensureForList(_defaultIncomeCategories, 'income');
   }
 
   /// Generic stream of user categories by type, from top-level `categories`.

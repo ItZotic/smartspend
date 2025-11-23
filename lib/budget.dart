@@ -943,13 +943,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           ),
                         ),
                         onPressed: () async {
+                          final navigator = Navigator.of(context);
                           final entered = double.tryParse(
                             limitController.text.trim(),
                           );
                           final currentUser = user;
 
                           if (entered == null || currentUser == null) {
-                            Navigator.of(context).pop();
+                            navigator.pop();
                             return;
                           }
 
@@ -1140,13 +1141,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               ),
                             ),
                             onPressed: () async {
+                              final navigator = Navigator.of(context);
                               final enteredLimit = double.tryParse(
                                 limitController.text.trim(),
                               );
                               final currentUser = user;
 
                               if (enteredLimit == null || currentUser == null) {
-                                Navigator.of(context).pop();
+                                navigator.pop();
                                 return;
                               }
 
