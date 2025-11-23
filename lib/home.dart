@@ -48,19 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  IconData _getIconForAccount(Map<String, dynamic> data) {
-    final typeOrName = (data['type'] ?? data['name'] ?? '').toString().toLowerCase();
-
-    if (typeOrName.contains('cash')) return Icons.money;
-    if (typeOrName.contains('bank')) return Icons.account_balance;
-    if (typeOrName.contains('credit')) return Icons.credit_card;
-    if (typeOrName.contains('debit')) return Icons.credit_card;
-    if (typeOrName.contains('wallet') || typeOrName.contains('e-wallet')) {
-      return Icons.account_balance_wallet;
-    }
-    return Icons.credit_card;
-  }
-
   void _showAccountPicker() {
     showModalBottomSheet(
       context: context,
@@ -168,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 backgroundColor:
                                     _themeService.primaryBlue.withOpacity(0.1),
                                 child: Icon(
-                                  _getIconForAccount(data),
+                                  Icons.credit_card,
                                   color: _themeService.primaryBlue,
                                 ),
                               ),
