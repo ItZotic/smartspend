@@ -32,8 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
       DraggableScrollableController();
 
   // State for selected account (null means "All Accounts")
-  String? _selectedAccountId;
-  String _selectedAccountName = 'All Accounts';
+  String? _selectedAccountName;
 
   @override
   void dispose() {
@@ -46,13 +45,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return _firestoreService.streamTransactions(
       uid: user!.uid,
-      accountName: _selectedAccountId == null ? null : _selectedAccountName,
+      accountName: _selectedAccountName,
     );
   }
 
   void _showAccountPicker() {
-    if (user == null) return;
-
     showModalBottomSheet(
       context: context,
       backgroundColor: _themeService.sheetColor,
@@ -60,36 +57,36 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Select Account",
-                  style: TextStyle(
-                    color: _themeService.textMain,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Select Account",
+                style: TextStyle(
+                  color: _themeService.textMain,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 16),
-                Flexible(
-                  child: StreamBuilder<
-                      QuerySnapshot<Map<String, dynamic>>>(
-                    stream: _firestoreService.streamAccounts(uid: user!.uid),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      }
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<
+                    QuerySnapshot<Map<String, dynamic>>>(
+                  stream: _firestoreService.streamAccounts(uid: user!.uid),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
 
-                      final docs = snapshot.data?.docs ?? [];
+                    final docs = snapshot.data?.docs ?? [];
 
+                    if (docs.isEmpty) {
                       return ListView(
-                        shrinkWrap: true,
                         children: [
                           ListTile(
                             leading: CircleAvatar(
@@ -106,56 +103,79 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             onTap: () {
                               setState(() {
-                                _selectedAccountId = null;
-                                _selectedAccountName = 'All Accounts';
+                                _selectedAccountName = null;
                               });
                               Navigator.pop(context);
                             },
                           ),
-                          const SizedBox(height: 8),
-                          if (docs.isEmpty)
-                            Center(
-                              child: Text(
-                                "No accounts found",
-                                style: TextStyle(color: _themeService.textSub),
-                              ),
-                            )
-                          else
-                            ...docs.map((doc) {
-                              final data = doc.data();
-                              final accountName =
-                                  (data['name'] ?? 'Unnamed Account')
-                                      .toString();
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: _themeService.primaryBlue
-                                      .withOpacity(0.1),
-                                  child: Icon(
-                                    Icons.credit_card,
-                                    color: _themeService.primaryBlue,
-                                  ),
-                                ),
-                                title: Text(
-                                  accountName,
-                                  style:
-                                      TextStyle(color: _themeService.textMain),
-                                ),
-                                onTap: () {
-                                  setState(() {
-                                    _selectedAccountId = doc.id;
-                                    _selectedAccountName = accountName;
-                                  });
-                                  Navigator.pop(context);
-                                },
-                              );
-                            }),
+                          const SizedBox(height: 12),
+                          Center(
+                            child: Text(
+                              "No accounts found",
+                              style: TextStyle(color: _themeService.textSub),
+                            ),
+                          ),
                         ],
                       );
-                    },
-                  ),
+                    }
+
+                    // Add "All Accounts" option
+                    final allOption = ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: _themeService.primaryBlue.withOpacity(
+                          0.1,
+                        ),
+                        child: Icon(
+                          Icons.account_balance,
+                          color: _themeService.primaryBlue,
+                        ),
+                      ),
+                      title: Text(
+                        "All Accounts",
+                        style: TextStyle(color: _themeService.textMain),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _selectedAccountName = null;
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+
+                    return ListView(
+                      children: [
+                        allOption,
+                        ...docs.map((doc) {
+                          final data = doc.data();
+                          final accountName =
+                              (data['name'] ?? 'Unnamed Account').toString();
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: _themeService.primaryBlue
+                                  .withOpacity(0.1),
+                              child: Icon(
+                                Icons.credit_card,
+                                color: _themeService.primaryBlue,
+                              ),
+                            ),
+                            title: Text(
+                              accountName,
+                              style: TextStyle(color: _themeService.textMain),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _selectedAccountName = accountName;
+                              });
+                              Navigator.pop(context);
+                            },
+                          );
+                        }),
+                      ],
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
