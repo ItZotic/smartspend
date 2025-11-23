@@ -24,6 +24,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
       animation: _themeService,
       builder: (context, _) {
         return Scaffold(
+          floatingActionButton: FloatingActionButton(
+            backgroundColor: _themeService.primaryBlue,
+            onPressed: _showAddAccountDialog,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
           body: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -143,12 +148,21 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   IconData _getIconForAccount(String? type) {
     final t = (type ?? '').toLowerCase();
-    if (t.contains('cash')) return Icons.money;
-    if (t.contains('bank')) return Icons.account_balance;
-    if (t.contains('credit')) return Icons.credit_card;
-    if (t.contains('debit')) return Icons.credit_card;
-    if (t.contains('wallet') || t.contains('e-wallet'))
+    if (t.contains('cash')) {
+      return Icons.money;
+    }
+    if (t.contains('bank')) {
+      return Icons.account_balance;
+    }
+    if (t.contains('credit')) {
+      return Icons.credit_card;
+    }
+    if (t.contains('debit')) {
+      return Icons.credit_card;
+    }
+    if (t.contains('wallet') || t.contains('e-wallet')) {
       return Icons.account_balance_wallet;
+    }
     return Icons.account_box;
   }
 
@@ -172,9 +186,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(
-                _themeService.isDarkMode ? 0.3 : 0.05,
-              ),
+              color: Colors.black
+                  .withAlpha(
+                      (255 * (_themeService.isDarkMode ? 0.3 : 0.05)).round()),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -185,7 +199,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _themeService.primaryBlue.withOpacity(0.1),
+                color: _themeService.primaryBlue
+                    .withAlpha((255 * 0.1).round()),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: _themeService.primaryBlue, size: 28),
@@ -284,7 +299,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   color: _themeService.cardBg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _themeService.primaryBlue.withOpacity(0.3),
+                    color:
+                        _themeService.primaryBlue.withAlpha((255 * 0.3).round()),
                   ),
                 ),
                 child: DropdownButtonHideUnderline(
@@ -309,10 +325,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
                     onChanged: (val) {
                       setModalState(() {
                         selectedType = val!;
-                        if (val != "Custom")
+                        if (val != "Custom") {
                           nameCtrl.text = val;
-                        else
+                        } else {
                           nameCtrl.clear();
+                        }
                       });
                     },
                   ),
@@ -415,9 +432,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
                               });
                         }
 
-                        if (mounted) Navigator.pop(context);
+                        if (!mounted || !context.mounted) {
+                          return;
+                        }
+
+                        Navigator.pop(context);
                       } catch (e) {
-                        print("Error adding account: $e");
+                        debugPrint("Error adding account: $e");
                       }
                     }
                   },
@@ -452,20 +473,24 @@ class _AccountsScreenState extends State<AccountsScreen> {
           style: TextStyle(color: _themeService.textSub),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () async {
-              await FirebaseFirestore.instance
-                  .collection('accounts')
-                  .doc(docId)
-                  .delete();
-              if (mounted) Navigator.pop(ctx);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () async {
+                await FirebaseFirestore.instance
+                    .collection('accounts')
+                    .doc(docId)
+                    .delete();
+                if (!mounted || !ctx.mounted) {
+                  return;
+                }
+
+                Navigator.pop(ctx);
+              },
+              child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            ),
         ],
       ),
     );
