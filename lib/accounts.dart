@@ -157,8 +157,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
     double balance,
     IconData icon,
     {String? docId,
-    bool enableDeletion = true},
-  ) {
+    bool enableDeletion = true}
+  )
+   {
     return GestureDetector(
       onLongPress: enableDeletion && docId != null
           ? () => _showDeleteDialog(docId, name)
