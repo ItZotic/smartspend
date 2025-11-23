@@ -189,9 +189,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
-                alpha: (255 * (_themeService.isDarkMode ? 0.3 : 0.05)).round(),
-              ),
+              color: Colors.black
+                  .withOpacity(_themeService.isDarkMode ? 0.3 : 0.05),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -202,8 +201,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _themeService.primaryBlue
-                    .withValues(alpha: (255 * 0.1).round()),
+                color: _themeService.primaryBlue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: _themeService.primaryBlue, size: 28),
@@ -302,8 +300,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   color: _themeService.cardBg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _themeService.primaryBlue
-                        .withValues(alpha: (255 * 0.3).round()),
+                    color: _themeService.primaryBlue.withOpacity(0.3),
                   ),
                 ),
                 child: DropdownButtonHideUnderline(
