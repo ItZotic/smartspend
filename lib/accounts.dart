@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 
 class AccountsScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class AccountsScreen extends StatefulWidget {
 
 class _AccountsScreenState extends State<AccountsScreen> {
   final ThemeService _themeService = ThemeService();
+  final FirestoreService _firestoreService = FirestoreService();
   final user = FirebaseAuth.instance.currentUser;
 
   @override
@@ -54,22 +56,20 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   ),
                   Expanded(
                     child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream: FirebaseFirestore.instance
-                          .collection('accounts')
-                          .where('uid', isEqualTo: user?.uid)
-                          .orderBy('createdAt', descending: false)
-                          .snapshots(),
-                      builder: (context, accountSnapshot) {
-                        if (accountSnapshot.connectionState ==
+                      stream: _firestoreService.streamTransactions(
+                        uid: user!.uid,
+                      ),
+                      builder: (context, txSnapshot) {
+                        if (txSnapshot.connectionState ==
                             ConnectionState.waiting) {
                           return const Center(
                             child: CircularProgressIndicator(),
                           );
                         }
 
-                        final accountDocs = accountSnapshot.data?.docs ?? [];
+                        final txDocs = txSnapshot.data?.docs ?? [];
 
-                        if (accountDocs.isEmpty) {
+                        if (txDocs.isEmpty) {
                           return Center(
                             child: Text(
                               "No accounts added yet",
@@ -78,55 +78,54 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           );
                         }
 
-                        return StreamBuilder<
-                            QuerySnapshot<Map<String, dynamic>>>(
-                          stream: FirebaseFirestore.instance
-                              .collection('transactions')
-                              .where('uid', isEqualTo: user?.uid)
-                              .snapshots(),
-                          builder: (context, txSnapshot) {
-                            final txDocs = txSnapshot.data?.docs ?? [];
-                            final Map<String, double> accountBalances = {};
+                        final Map<String, double> accountBalances = {};
+                        double totalBalance = 0;
 
-                            for (final doc in txDocs) {
-                              final data = doc.data();
-                              final double amount =
-                                  (data['amount'] as num?)?.toDouble() ?? 0.0;
-                              final String accountName =
-                                  (data['account'] ?? data['accountName'] ??
-                                          'Unknown Account')
-                                      .toString();
+                        for (final doc in txDocs) {
+                          final data = doc.data();
+                          final double amount =
+                              ((data['amount'] as num?)?.toDouble() ?? 0.0)
+                                  .abs();
+                          final String type =
+                              (data['type'] ?? '').toString().toLowerCase();
+                          final String accountName =
+                              (data['accountName'] ?? data['account'] ??
+                                      'Unassigned')
+                                  .toString();
 
-                              accountBalances[accountName] =
-                                  (accountBalances[accountName] ?? 0.0) +
-                                      amount;
-                            }
+                          final signedAmount =
+                              type == 'expense' ? -amount : amount;
+                          accountBalances[accountName] =
+                              (accountBalances[accountName] ?? 0.0) +
+                                  signedAmount;
+                          totalBalance += signedAmount;
+                        }
 
-                            return ListView.separated(
-                              controller: widget.scrollController,
-                              padding: const EdgeInsets.all(16),
-                              itemCount: accountDocs.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(
-                                height: 12,
-                              ),
-                              itemBuilder: (context, index) {
-                                final accountDoc = accountDocs[index];
-                                final data = accountDoc.data();
-                                final accountName =
-                                    (data['name'] ?? 'Unnamed Account')
-                                        .toString();
-                                final balance = accountBalances[accountName] ??
-                                    (data['balance'] as num?)?.toDouble() ??
-                                    0.0;
+                        final accountEntries = accountBalances.entries.toList()
+                          ..sort((a, b) => a.key.compareTo(b.key));
 
-                                return _buildAccountCard(
-                                  accountName,
-                                  balance,
-                                  _getIconForAccount(data['type']),
-                                  accountDoc.id,
-                                );
-                              },
+                        final List<MapEntry<String, double>> rows = [
+                          MapEntry('All Accounts', totalBalance),
+                          ...accountEntries,
+                        ];
+
+                        return ListView.separated(
+                          controller: widget.scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: rows.length,
+                          separatorBuilder: (context, index) => const SizedBox(
+                            height: 12,
+                          ),
+                          itemBuilder: (context, index) {
+                            final entry = rows[index];
+                            final bool isAllAccounts = entry.key == 'All Accounts';
+                            return _buildAccountCard(
+                              entry.key,
+                              entry.value,
+                              isAllAccounts
+                                  ? Icons.account_balance_wallet
+                                  : _getIconForAccount(entry.key),
+                              enableDeletion: false,
                             );
                           },
                         );
@@ -157,10 +156,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
     String name,
     double balance,
     IconData icon,
-    String docId,
+    {String? docId,
+    bool enableDeletion = true},
   ) {
     return GestureDetector(
-      onLongPress: () => _showDeleteDialog(docId, name),
+      onLongPress: enableDeletion && docId != null
+          ? () => _showDeleteDialog(docId, name)
+          : null,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
@@ -405,6 +407,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                                 'type': 'income',
                                 'category': 'Initial Balance',
                                 'account': accountName, // Link to this account
+                                'accountName': accountName,
                                 'name': 'Opening Balance',
                                 'date': FieldValue.serverTimestamp(),
                                 'createdAt': FieldValue.serverTimestamp(),
