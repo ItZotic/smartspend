@@ -324,7 +324,7 @@ class FirestoreService {
     required int month,
     required double amount,
   }) async {
-    final docId = "${uid}_$year_${month.toString().padLeft(2, '0')}";
+    final docId = "${uid}_$year${month.toString().padLeft(2, '0')}";
     final docRef = _firestore.collection('budgets').doc(docId);
 
     final existingDoc = await docRef.get();
