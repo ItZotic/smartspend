@@ -338,12 +338,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           double displayBalance = 0;
                           for (var doc in filteredDocs) {
                             final data = doc.data();
-                            final amt =
-                                (data['amount'] as num?)?.toDouble() ?? 0.0;
                             final type =
                                 (data['type'] ?? '').toString().toLowerCase();
-                            final signed = type == 'expense' ? -amt : amt;
-                            displayBalance += signed;
+                            final double amount =
+                                (data['amount'] as num?)?.toDouble() ?? 0.0;
+                            final double signedAmount = type == 'expense'
+                                ? -amount.abs()
+                                : amount.abs();
+                            displayBalance += signedAmount;
                           }
 
                           return Container(
