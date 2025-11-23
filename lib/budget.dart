@@ -963,7 +963,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           await _firestoreService.setBudgetLimit(
                             uid: currentUser.uid,
                             categoryName: categoryName,
-                            month: _currentMonth,
+                            year: _selectedMonth.year,
+                            month: _selectedMonth.month,
                             limit: entered,
                           );
 
@@ -1164,7 +1165,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               await _firestoreService.setBudgetLimit(
                                 uid: currentUser.uid,
                                 categoryName: selectedCategory,
-                                month: _currentMonth,
+                                year: _selectedMonth.year,
+                                month: _selectedMonth.month,
                                 limit: enteredLimit,
                               );
 
