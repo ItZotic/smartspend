@@ -233,9 +233,14 @@ class FirestoreService {
     required String uid,
     DateTime? start,
     DateTime? end,
+    String? accountName,
   }) {
     Query<Map<String, dynamic>> query =
         _firestore.collection('transactions').where('uid', isEqualTo: uid);
+
+    if (accountName != null) {
+      query = query.where('account', isEqualTo: accountName);
+    }
 
     if (start != null) {
       query = query.where(
@@ -254,6 +259,16 @@ class FirestoreService {
     query = query.orderBy('date', descending: true);
 
     return query.snapshots();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamAccounts({
+    required String uid,
+  }) {
+    return _firestore
+        .collection('accounts')
+        .where('uid', isEqualTo: uid)
+        .orderBy('createdAt', descending: false)
+        .snapshots();
   }
 
   Future<void> updateTransaction({
