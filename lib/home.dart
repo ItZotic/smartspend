@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final DraggableScrollableController _draggableController =
       DraggableScrollableController();
 
-  // State for selected account (null means "All Accounts")
+  // null = "All Accounts"
   String? _selectedAccountName;
 
   @override
@@ -72,12 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: StreamBuilder<
-                    QuerySnapshot<Map<String, dynamic>>>(
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: _firestoreService.streamAccounts(uid: user!.uid),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
                         child: CircularProgressIndicator(),
                       );
@@ -119,12 +117,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     }
 
-                    // Add "All Accounts" option
+                    // "All Accounts" option
                     final allOption = ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: _themeService.primaryBlue.withOpacity(
-                          0.1,
-                        ),
+                        backgroundColor:
+                            _themeService.primaryBlue.withOpacity(0.1),
                         child: Icon(
                           Icons.account_balance,
                           color: _themeService.primaryBlue,
@@ -151,8 +148,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               (data['name'] ?? 'Unnamed Account').toString();
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: _themeService.primaryBlue
-                                  .withOpacity(0.1),
+                              backgroundColor:
+                                  _themeService.primaryBlue.withOpacity(0.1),
                               child: Icon(
                                 Icons.credit_card,
                                 color: _themeService.primaryBlue,
@@ -187,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return AnimatedBuilder(
       animation: _themeService,
       builder: (context, _) {
-        // Colors from Service
         final Color bgTop = _themeService.bgTop;
         final Color bgBottom = _themeService.bgBottom;
         final Color primaryBlue = _themeService.primaryBlue;
@@ -200,10 +196,9 @@ class _HomeScreenState extends State<HomeScreen> {
         return Scaffold(
           key: _scaffoldKey,
           drawer: const MainMenuDrawer(),
-
           body: Stack(
             children: [
-              // Gradient Background
+              // Gradient background
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -266,9 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-
                           const SizedBox(width: 16),
-
                           Text(
                             "SmartSpend",
                             style: TextStyle(
@@ -278,9 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               letterSpacing: -0.5,
                             ),
                           ),
-
                           const Spacer(),
-
                           Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
@@ -315,7 +306,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 32),
 
                       // Balance Card
-                      // We need to determine if we are fetching ALL transactions or ONE account's transactions
                       StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                         stream: _transactionsStream(),
                         builder: (context, snapshot) {
@@ -342,9 +332,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(
-                                    0xFF1565C0,
-                                  ).withOpacity(0.4),
+                                  color: const Color(0xFF1565C0)
+                                      .withOpacity(0.4),
                                   blurRadius: 25,
                                   offset: const Offset(0, 15),
                                 ),
@@ -379,19 +368,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                             color: Colors.white70,
                                             size: 32,
                                           ),
-                                          // ✅ ACCOUNT PICKER BUTTON
+                                          // Account picker button
                                           GestureDetector(
                                             onTap: _showAccountPicker,
                                             child: Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 6,
-                                                  ),
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
                                               decoration: BoxDecoration(
-                                                color: Colors.white.withOpacity(
-                                                  0.2,
-                                                ),
+                                                color: Colors.white
+                                                    .withOpacity(0.2),
                                                 borderRadius:
                                                     BorderRadius.circular(12),
                                                 border: Border.all(
@@ -402,7 +390,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                               child: Row(
                                                 children: [
                                                   Text(
-                                                    _selectedAccountName,
+                                                    _selectedAccountName ??
+                                                        "All Accounts",
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 12,
@@ -427,9 +416,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _selectedAccountId == null
+                                            _selectedAccountName == null
                                                 ? "Total Balance"
-                                                : "$_selectedAccountName Balance",
+                                                : "${_selectedAccountName!} Balance",
                                             style: const TextStyle(
                                               color: Colors.white70,
                                               fontSize: 14,
@@ -531,12 +520,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const SubscriptionsScreen(),
+                                  builder: (_) =>
+                                      const SubscriptionsScreen(),
                                 ),
                               );
                             },
                           ),
-
                           _buildGlassActivityBtn(
                             Icons.calendar_month,
                             "Calendar",
@@ -551,7 +540,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                             },
                           ),
-
                           _buildGlassActivityBtn(
                             Icons.shopping_bag_outlined,
                             "Shop",
@@ -579,7 +567,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 initialChildSize: 0.30,
                 minChildSize: 0.30,
                 maxChildSize: 0.9,
-                builder: (BuildContext context, ScrollController sheetController) {
+                builder:
+                    (BuildContext context, ScrollController sheetController) {
                   return Container(
                     decoration: BoxDecoration(
                       color: sheetColor,
@@ -603,11 +592,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () {
                                 final double targetSize =
                                     _draggableController.size >= 0.5
-                                    ? 0.30
-                                    : 0.9;
+                                        ? 0.30
+                                        : 0.9;
                                 _draggableController.animateTo(
                                   targetSize,
-                                  duration: const Duration(milliseconds: 300),
+                                  duration:
+                                      const Duration(milliseconds: 300),
                                   curve: Curves.easeOut,
                                 );
                               },
@@ -619,7 +609,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 28.0,
@@ -644,10 +633,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 10),
 
-                        // Transaction List (Using same stream logic as Balance Card to filter)
+                        // Transaction List
                         Expanded(
                           child: StreamBuilder<
                               QuerySnapshot<Map<String, dynamic>>>(
@@ -679,9 +667,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 itemCount: transactions.length,
                                 itemBuilder: (context, index) {
-                                  final data =
-                                      transactions[index].data()
-                                          as Map<String, dynamic>;
+                                  final data = transactions[index].data();
                                   return _buildDarkTransactionTile(
                                     transactions[index],
                                     data,
@@ -775,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDarkTransactionTile(
-    DocumentSnapshot doc,
+    DocumentSnapshot<Map<String, dynamic>> doc,
     Map<String, dynamic> data,
   ) {
     final bool isExpense =
@@ -785,25 +771,22 @@ class _HomeScreenState extends State<HomeScreen> {
         (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
     IconData icon = Icons.category;
-    if (data['category'] == 'Food & Dining')
+    if (data['category'] == 'Food & Dining') {
       icon = Icons.restaurant;
-    else if (data['category'] == 'Transportation')
+    } else if (data['category'] == 'Transportation') {
       icon = Icons.directions_car;
-    else if (data['category'] == 'Salary')
+    } else if (data['category'] == 'Salary') {
       icon = Icons.work;
-    else if (data['category'] == 'Entertainment')
+    } else if (data['category'] == 'Entertainment') {
       icon = Icons.movie;
+    }
 
-    // White Card with Black Text and Cyan Glow
-    final Color cardBg = _themeService.isDarkMode
-        ? const Color(0xFF122545)
-        : Colors.white;
-    final Color textColor = _themeService.isDarkMode
-        ? Colors.white
-        : Colors.black;
-    final Color subTextColor = _themeService.isDarkMode
-        ? Colors.white54
-        : Colors.grey;
+    final Color cardBg =
+        _themeService.isDarkMode ? const Color(0xFF122545) : Colors.white;
+    final Color textColor =
+        _themeService.isDarkMode ? Colors.white : Colors.black;
+    final Color subTextColor =
+        _themeService.isDarkMode ? Colors.white54 : Colors.grey;
 
     return GestureDetector(
       onTap: () {
@@ -839,7 +822,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: _themeService.primaryBlue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: _themeService.primaryBlue, size: 20),
+              child: Icon(
+                icon,
+                color: _themeService.primaryBlue,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
