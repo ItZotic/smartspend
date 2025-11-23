@@ -5,13 +5,13 @@ import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class _DefaultCategory {
+class DefaultCategory {
   final String name;
   final String type; // 'income' or 'expense'
   final IconData icon;
   final Color color;
 
-  const _DefaultCategory({
+  const DefaultCategory({
     required this.name,
     required this.type,
     required this.icon,
@@ -19,56 +19,56 @@ class _DefaultCategory {
   });
 }
 
-const List<_DefaultCategory> kDefaultIncomeCategories = [
-  _DefaultCategory(
+const List<DefaultCategory> kDefaultIncomeCategories = [
+  DefaultCategory(
     name: 'Awards',
     type: 'income',
     icon: Icons.card_giftcard,
     color: Color(0xFF1565C0),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Coupons',
     type: 'income',
     icon: Icons.percent,
     color: Color(0xFFE53935),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Food & Dining',
     type: 'income',
     icon: Icons.restaurant,
     color: Color(0xFFD32F2F),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Grants',
     type: 'income',
     icon: Icons.volunteer_activism,
     color: Color(0xFF00796B),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Lottery',
     type: 'income',
     icon: Icons.casino,
     color: Color(0xFFC62828),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Refunds',
     type: 'income',
     icon: Icons.refresh,
     color: Color(0xFF2E7D32),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Rental',
     type: 'income',
     icon: Icons.house,
     color: Color(0xFF6A1B9A),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Salary',
     type: 'income',
     icon: Icons.work,
     color: Color(0xFF283593),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Sale',
     type: 'income',
     icon: Icons.sell,
@@ -76,92 +76,92 @@ const List<_DefaultCategory> kDefaultIncomeCategories = [
   ),
 ];
 
-const List<_DefaultCategory> kDefaultExpenseCategories = [
-  _DefaultCategory(
+const List<DefaultCategory> kDefaultExpenseCategories = [
+  DefaultCategory(
     name: 'Bills',
     type: 'expense',
     icon: Icons.receipt_long,
     color: Color(0xFF455A64),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Car',
     type: 'expense',
     icon: Icons.directions_car,
     color: Color(0xFF6A1B9A),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Clothing',
     type: 'expense',
     icon: Icons.checkroom,
     color: Color(0xFFFF9800),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Education',
     type: 'expense',
     icon: Icons.school,
     color: Color(0xFF3949AB),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Electronics',
     type: 'expense',
     icon: Icons.devices,
     color: Color(0xFF00897B),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Entertainment',
     type: 'expense',
     icon: Icons.movie,
     color: Color(0xFFAB47BC),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Food',
     type: 'expense',
     icon: Icons.restaurant,
     color: Color(0xFFE53935),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Health',
     type: 'expense',
     icon: Icons.favorite,
     color: Color(0xFFD81B60),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Home',
     type: 'expense',
     icon: Icons.home,
     color: Color(0xFF5D4037),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Insurance',
     type: 'expense',
     icon: Icons.verified_user,
     color: Color(0xFFFFA726),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Shopping',
     type: 'expense',
     icon: Icons.shopping_bag,
     color: Color(0xFF1976D2),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Social',
     type: 'expense',
     icon: Icons.group,
     color: Color(0xFF2E7D32),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Sport',
     type: 'expense',
     icon: Icons.sports_soccer,
     color: Color(0xFF43A047),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Tax',
     type: 'expense',
     icon: Icons.receipt,
     color: Color(0xFF8D6E63),
   ),
-  _DefaultCategory(
+  DefaultCategory(
     name: 'Telephone',
     type: 'expense',
     icon: Icons.call,
@@ -660,7 +660,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 name: updatedName,
                                 iconIndex: iconIndex,
                                 iconId: selectedOption.id,
-                                iconColor: selectedOption.bgColor.value,
+                                iconColor: selectedOption.bgColor.toARGB32(),
                               );
 
                               Navigator.of(context).pop();
@@ -713,9 +713,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ),
             TextButton(
               onPressed: () async {
+                final navigator = Navigator.of(context);
                 final currentUser = user;
                 if (currentUser == null) {
-                  Navigator.of(context).pop();
+                  navigator.pop();
                   return;
                 }
 
@@ -725,7 +726,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 );
 
                 if (!mounted) return;
-                Navigator.of(context).pop();
+                navigator.pop();
               },
               child: Text(
                 'DELETE',
@@ -913,6 +914,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               ),
                             ),
                             onPressed: () async {
+                              final navigator = Navigator.of(context);
                               final name = nameController.text.trim();
                               final currentUser = user;
                               final selectedOption =
@@ -921,7 +923,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                   .indexOf(selectedOption);
 
                               if (name.isEmpty || currentUser == null) {
-                                Navigator.of(context).pop();
+                                navigator.pop();
                                 return;
                               }
 
@@ -933,10 +935,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 type: type,
                                 iconIndex: iconIndex,
                                 iconId: selectedOption.id,
-                                iconColor: selectedOption.bgColor.value,
+                                iconColor: selectedOption.bgColor.toARGB32(),
                               );
 
-                              Navigator.of(context).pop();
+                              if (!mounted) return;
+                              navigator.pop();
                             },
                             child: const Text(
                               'SAVE',
@@ -954,53 +957,5 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         );
       },
     );
-  }
-
-  Future<void> _ensureDefaultCategories() async {
-    final currentUser = user;
-    if (currentUser == null) {
-      return;
-    }
-
-    final categoriesCollection =
-        FirebaseFirestore.instance.collection('categories');
-    final existing = await categoriesCollection
-        .where('owner', isEqualTo: currentUser.uid)
-        .limit(1)
-        .get();
-
-    if (existing.docs.isNotEmpty) {
-      return;
-    }
-
-    final allDefaults = [
-      ...kDefaultIncomeCategories,
-      ...kDefaultExpenseCategories,
-    ];
-
-    final batch = FirebaseFirestore.instance.batch();
-
-    for (final category in allDefaults) {
-      final iconKey = _defaultCategoryIconKeys[category.name] ??
-          category.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-      final option = getCategoryIconOptionById(iconKey);
-      final iconIndex = kCategoryIconOptions.indexOf(option);
-      final docRef = categoriesCollection.doc();
-
-      batch.set(docRef, {
-        'name': category.name,
-        'type': category.type,
-        'owner': currentUser.uid,
-        'icon': iconKey,
-        'color': category.color.value,
-        'iconId': iconKey,
-        'iconColor': category.color.value,
-        'iconIndex': iconIndex < 0 ? 0 : iconIndex,
-        'isDefault': true,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
-
-    await batch.commit();
   }
 }
