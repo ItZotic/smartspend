@@ -21,64 +21,26 @@ class _BudgetScreenState extends State<BudgetScreen> {
   final ThemeService _themeService = ThemeService();
   final TextEditingController _monthlyBudgetController = TextEditingController();
 
-  late DateTime _currentMonth;
-  double? _monthlyBudgetAmount;
-  bool _isMonthlyBudgetLoading = false;
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
 
   final Set<String> _budgetedCategories = {};
   final Map<String, double> _budgetLimits = {};
   final Map<String, double> _spentAmounts = {};
   Map<String, Map<String, dynamic>> _expenseCategoryMeta = {};
 
-  String get _monthLabel => DateFormat.yMMMM().format(_currentMonth);
-
-  @override
-  void initState() {
-    super.initState();
-    _currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
-    _loadBudgetForCurrentMonth();
-  }
+  String get _monthLabel => DateFormat.yMMMM().format(_selectedMonth);
 
   void _changeMonth(int offset) {
     setState(() {
-      _currentMonth = DateTime(
-        _currentMonth.year,
-        _currentMonth.month + offset,
+      _selectedMonth = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + offset,
         1,
       );
-    });
-
-    _loadBudgetForCurrentMonth();
-  }
-
-  Future<void> _loadBudgetForCurrentMonth() async {
-    final currentUser = user;
-
-    if (currentUser == null) {
-      setState(() {
-        _monthlyBudgetAmount = null;
-        _isMonthlyBudgetLoading = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isMonthlyBudgetLoading = true;
-    });
-
-    final fetchedAmount = await _firestoreService.getMonthlyBudget(
-      uid: currentUser.uid,
-      year: _currentMonth.year,
-      month: _currentMonth.month,
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _monthlyBudgetAmount = fetchedAmount;
-      _isMonthlyBudgetLoading = false;
     });
   }
 
@@ -249,23 +211,35 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildMonthlyBudgetSection() {
-    if (_isMonthlyBudgetLoading) {
-      return Center(
-        child: CircularProgressIndicator(
-          color: _themeService.primaryBlue,
-        ),
-      );
-    }
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _firestoreService.streamMonthlyBudget(
+        uid: user!.uid,
+        year: _selectedMonth.year,
+        month: _selectedMonth.month,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              color: _themeService.primaryBlue,
+            ),
+          );
+        }
 
-    final monthlyAmount = _monthlyBudgetAmount;
-    if (monthlyAmount == null) {
-      return _buildSetBudgetButton();
-    }
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return _buildSetBudgetButton();
+        }
 
-    return _buildBudgetSummaryCard(
-      totalBudget: monthlyAmount,
-      totalSpent: _totalSpent,
-      onEdit: () => _showMonthlyBudgetDialog(currentAmount: monthlyAmount),
+        final data = docs.first.data();
+        final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+
+        return _buildBudgetSummaryCard(
+          totalBudget: amount,
+          totalSpent: _totalSpent,
+          onEdit: () => _showMonthlyBudgetDialog(currentAmount: amount),
+        );
+      },
     );
   }
 
@@ -502,12 +476,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
                           await _firestoreService.setMonthlyBudget(
                             uid: currentUser.uid,
-                            year: _currentMonth.year,
-                            month: _currentMonth.month,
+                            year: _selectedMonth.year,
+                            month: _selectedMonth.month,
                             amount: enteredBudget,
                           );
-
-                          await _loadBudgetForCurrentMonth();
 
                           if (!mounted) {
                             return;

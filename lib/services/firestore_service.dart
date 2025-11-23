@@ -363,6 +363,48 @@ class FirestoreService {
     return (data?['amount'] as num?)?.toDouble();
   }
 
+  Future<void> setMonthlyBudget({
+    required String uid,
+    required int year,
+    required int month,
+    required double amount,
+  }) async {
+    final docId = "${uid}_$year${month.toString().padLeft(2, '0')}";
+    final docRef = _firestore.collection('budgets').doc(docId);
+
+    final existingDoc = await docRef.get();
+    final data = {
+      'uid': uid,
+      'year': year,
+      'month': month,
+      'amount': amount,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (existingDoc.exists) {
+      await docRef.update(data);
+    } else {
+      await docRef.set({
+        ...data,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamMonthlyBudget({
+    required String uid,
+    required int year,
+    required int month,
+  }) {
+    return _firestore
+        .collection('budgets')
+        .where('uid', isEqualTo: uid)
+        .where('year', isEqualTo: year)
+        .where('month', isEqualTo: month)
+        .limit(1)
+        .snapshots();
+  }
+
   Future<void> addCategory({
     required String uid,
     required String name,
