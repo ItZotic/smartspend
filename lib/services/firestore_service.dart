@@ -413,7 +413,7 @@ class FirestoreService {
     return spent;
   }
   
-    Stream<QuerySnapshot<Map<String, dynamic>>> streamMonthlyBudget({
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamMonthlyBudget({
     required String uid,
     required int year,
     required int month,
