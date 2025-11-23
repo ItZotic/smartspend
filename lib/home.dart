@@ -11,6 +11,7 @@ import 'package:smartspend/widgets/subscriptions_screen.dart';
 import 'package:smartspend/widgets/shop_screen.dart';
 import 'package:smartspend/services/theme_service.dart';
 import 'package:smartspend/widgets/calendar_screen.dart';
+import 'package:smartspend/models/category_icon_option.dart';
 
 class HomeScreen extends StatefulWidget {
   final ScrollController? scrollController;
@@ -814,16 +815,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final DateTime date =
         (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
-    IconData icon = Icons.category;
-    if (data['category'] == 'Food & Dining') {
-      icon = Icons.restaurant;
-    } else if (data['category'] == 'Transportation') {
-      icon = Icons.directions_car;
-    } else if (data['category'] == 'Salary') {
-      icon = Icons.work;
-    } else if (data['category'] == 'Entertainment') {
-      icon = Icons.movie;
-    }
+    final iconOption = getCategoryIconOptionFromData(data);
+    final iconColor = getCategoryIconBgColor(data);
 
     final Color cardBg =
         _themeService.isDarkMode ? const Color(0xFF122545) : Colors.white;
@@ -863,12 +856,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _themeService.primaryBlue.withOpacity(0.1),
+                color: iconColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
-                icon,
-                color: _themeService.primaryBlue,
+                iconOption.icon,
+                color: iconColor,
                 size: 20,
               ),
             ),

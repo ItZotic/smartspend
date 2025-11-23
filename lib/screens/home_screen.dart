@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:smartspend/models/category_icon_option.dart';
 // ❗️ UPDATE THIS IMPORT to match your project
 import 'package:smartspend/services/firestore_service.dart';
 
@@ -259,14 +260,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final DateTime date =
         (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
-    // Icon logic (you can expand this map or use your helper function)
-    IconData icon = Icons.category;
-    if (data['category'] == 'Food & Dining'){
-      icon = Icons.restaurant; }
-    else if (data['category'] == 'Transportation') {
-      icon = Icons.directions_car; }
-    else if (data['category'] == 'Salary') {
-      icon = Icons.work; }
+    final iconOption = getCategoryIconOptionFromData(data);
+    final iconColor = getCategoryIconBgColor(data);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -287,10 +282,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFEAF2F8),
+              color: iconColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: const Color(0xFF2D79F6)),
+            child: Icon(iconOption.icon, color: iconColor),
           ),
           const SizedBox(width: 16),
           Expanded(

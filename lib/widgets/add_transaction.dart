@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:smartspend/models/category_icon_option.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 
@@ -26,6 +27,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String? _selectedAccountName;
   String? _selectedCategoryName;
   String? _selectedCategoryId;
+  String? _selectedCategoryIconId;
+  int? _selectedCategoryIconColor;
   bool _isExpense = true;
   DateTime _selectedDate = DateTime.now();
   String _amountText = '';
@@ -47,6 +50,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       final data = widget.transactionData!;
       _selectedCategoryName = data['category'] ?? 'Uncategorized';
       _selectedCategoryId = data['categoryId'];
+      _selectedCategoryIconId = data['iconId'] as String?;
+      final storedIconColor = data['iconColor'];
+      if (storedIconColor is int) {
+        _selectedCategoryIconColor = storedIconColor;
+      }
       _selectedAccountName = data['accountName'] ?? data['account'];
       _isExpense = (data['type'] ?? 'expense').toString() != 'income';
 
@@ -126,6 +134,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final double finalAmount = _isExpense ? -amount : amount;
     final selectedCategoryName = _selectedCategoryName ?? 'Uncategorized';
     final selectedAccountName = _selectedAccountName ?? 'ACCOUNT';
+    final categoryIconOption =
+        getCategoryIconOptionById(_selectedCategoryIconId);
+    final categoryIconColor = _selectedCategoryIconColor ??
+        categoryIconOption.bgColor.value;
 
     // ✅ Clean, explicit handling of createdAt (no nested ?: / ??)
     dynamic createdAtValue;
@@ -144,6 +156,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       'type': _typeString,
       'category': selectedCategoryName,
       'categoryId': _selectedCategoryId,
+      'iconId': categoryIconOption.id,
+      'iconColor': categoryIconColor,
       'accountName': selectedAccountName,
       'account': selectedAccountName,
       'name': _descController.text.trim(),
@@ -415,32 +429,41 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                               color: dividerColor,
                             ),
                             itemBuilder: (context, index) {
-                              final doc = docs[index];
-                              final data = doc.data();
-                              final categoryName =
-                                  (data['name'] as String?) ?? 'Unnamed';
+                          final doc = docs[index];
+                          final data = doc.data();
+                          final categoryName =
+                              (data['name'] as String?) ?? 'Unnamed';
+                          final iconOption =
+                              getCategoryIconOptionFromData(data);
+                          final iconColor =
+                              getCategoryIconBgColor(data);
 
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: _themeService.primaryBlue
-                                      .withValues(alpha: 0.1),
-                                  child: Icon(
-                                    Icons.category_rounded,
-                                    color: _themeService.primaryBlue,
-                                  ),
-                                ),
-                                title: Text(
-                                  categoryName,
-                                  style: TextStyle(color: textColor),
-                                ),
-                                onTap: () {
-                                  setState(() {
-                                    _selectedCategoryName = categoryName;
-                                    _selectedCategoryId = doc.id;
-                                  });
-                                  Navigator.pop(context);
-                                },
-                              );
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  iconColor.withValues(alpha: 0.15),
+                              child: Icon(
+                                iconOption.icon,
+                                color: iconColor,
+                              ),
+                            ),
+                            title: Text(
+                              categoryName,
+                              style: TextStyle(color: textColor),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _selectedCategoryName = categoryName;
+                                _selectedCategoryId = doc.id;
+                                _selectedCategoryIconId =
+                                    data['iconId'] as String? ?? iconOption.id;
+                                _selectedCategoryIconColor =
+                                    (data['iconColor'] as num?)?.toInt() ??
+                                        iconOption.bgColor.value;
+                              });
+                              Navigator.pop(context);
+                            },
+                          );
                             },
                           );
                         },
@@ -469,6 +492,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         final Color textDark = _themeService.textMain;
         final Color textSub = _themeService.textSub;
         final Color cardBg = _themeService.cardBg;
+        final selectedCategoryData = {
+          'iconId': _selectedCategoryIconId,
+          'iconColor': _selectedCategoryIconColor,
+        };
+        final selectedCategoryOption =
+            getCategoryIconOptionFromData(selectedCategoryData);
+        final selectedCategoryColor =
+            getCategoryIconBgColor(selectedCategoryData);
 
         return Scaffold(
           body: Container(
@@ -592,10 +623,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: _buildSelector(
-                                    icon: Icons.category,
+                                    icon: selectedCategoryOption.icon,
                                     label:
                                         _selectedCategoryName ?? 'CATEGORY',
                                     onTap: _showCategorySheet,
+                                    iconColor: selectedCategoryColor,
                                   ),
                                 ),
                               ],
@@ -853,6 +885,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    Color? iconColor,
   }) {
     final Color primaryBlue = _themeService.primaryBlue;
 
@@ -879,7 +912,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: primaryBlue),
+            Icon(icon, color: iconColor ?? primaryBlue),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
