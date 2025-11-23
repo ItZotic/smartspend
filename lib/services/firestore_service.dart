@@ -335,7 +335,9 @@ class FirestoreService {
       'type': type,
       'owner': uid,
       'icon': iconString,
+      'iconId': iconString,
       'color': colorValue ?? 0xFF2979FF,
+      'iconColor': colorValue ?? 0xFF2979FF,
       'iconIndex': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -346,6 +348,8 @@ class FirestoreService {
     required String name,
     required String type,
     required int iconIndex,
+    required String iconId,
+    required int iconColor,
   }) {
     final trimmedName = name.trim();
 
@@ -354,6 +358,10 @@ class FirestoreService {
       'type': type,
       'owner': uid,
       'iconIndex': iconIndex,
+      'iconId': iconId,
+      'icon': iconId,
+      'color': iconColor,
+      'iconColor': iconColor,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -363,6 +371,8 @@ class FirestoreService {
     required String categoryId,
     String? name,
     int? iconIndex,
+    String? iconId,
+    int? iconColor,
   }) async {
     final updates = <String, dynamic>{
       'owner': uid,
@@ -374,6 +384,16 @@ class FirestoreService {
 
     if (iconIndex != null) {
       updates['iconIndex'] = iconIndex;
+    }
+
+    if (iconId != null) {
+      updates['iconId'] = iconId;
+      updates['icon'] = iconId;
+    }
+
+    if (iconColor != null) {
+      updates['iconColor'] = iconColor;
+      updates['color'] = iconColor;
     }
 
     await _firestore

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:smartspend/models/category_icon_option.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,6 +29,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   final Set<String> _budgetedCategories = {};
   final Map<String, double> _budgetLimits = {};
   final Map<String, double> _spentAmounts = {};
+  Map<String, Map<String, dynamic>> _expenseCategoryMeta = {};
 
   String get _monthLabel => DateFormat.yMMMM().format(_selectedMonth);
 
@@ -46,6 +48,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   double get _totalSpent =>
       _spentAmounts.values.fold(0.0, (sum, value) => sum + value);
+
+  Map<String, dynamic> _getCategoryMeta(String categoryName) {
+    return _expenseCategoryMeta[categoryName] ?? {};
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,13 +78,23 @@ class _BudgetScreenState extends State<BudgetScreen> {
               );
             }
 
-            final expenseCategories =
-                snapshot.data?.docs
-                    .map((doc) => (doc.data()['name'] as String?)?.trim())
-                    .whereType<String>()
-                    .where((name) => name.isNotEmpty)
-                    .toList() ??
-                [];
+            final docs = snapshot.data?.docs ?? [];
+            final expenseCategoryMeta = <String, Map<String, dynamic>>{};
+
+            final expenseCategories = docs
+                .map((doc) {
+                  final data = doc.data();
+                  final name = (data['name'] as String?)?.trim();
+                  if (name != null && name.isNotEmpty) {
+                    expenseCategoryMeta[name] = data;
+                  }
+                  return name;
+                })
+                .whereType<String>()
+                .where((name) => name.isNotEmpty)
+                .toList();
+
+            _expenseCategoryMeta = expenseCategoryMeta;
 
             return Scaffold(
               body: Container(
@@ -354,6 +370,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
     double budgetAmount,
     double spentAmount,
   ) {
+    final categoryData = _getCategoryMeta(category);
+    final iconOption = getCategoryIconOptionFromData(categoryData);
+    final iconColor = getCategoryIconBgColor(categoryData);
+
     final progress = budgetAmount == 0
         ? 0.0
         : (spentAmount / budgetAmount).clamp(0.0, 1.0);
@@ -378,12 +398,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withValues(alpha: 0.12),
+              color: iconColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.category_rounded,
-              color: _themeService.primaryBlue,
+              iconOption.icon,
+              color: iconColor,
               size: 22,
             ),
           ),
@@ -496,6 +516,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildNotBudgetedRow(String category) {
+    final categoryData = _getCategoryMeta(category);
+    final iconOption = getCategoryIconOptionFromData(categoryData);
+    final iconColor = getCategoryIconBgColor(categoryData);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -515,12 +539,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withValues(alpha: 0.12),
+              color: iconColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.category_rounded,
-              color: _themeService.primaryBlue,
+              iconOption.icon,
+              color: iconColor,
               size: 22,
             ),
           ),
@@ -562,6 +586,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
       text: _budgetLimits[categoryName]?.toString() ?? '',
     );
 
+    final categoryData = _getCategoryMeta(categoryName);
+    final iconOption = getCategoryIconOptionFromData(categoryData);
+    final iconColor = getCategoryIconBgColor(categoryData);
+
     await showDialog(
       context: context,
       builder: (context) {
@@ -602,14 +630,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: _themeService.primaryBlue.withValues(
-                            alpha: 0.12,
+                          color: iconColor.withValues(
+                            alpha: 0.15,
                           ),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          Icons.category_rounded,
-                          color: _themeService.primaryBlue,
+                          iconOption.icon,
+                          color: iconColor,
                           size: 22,
                         ),
                       ),

@@ -1,21 +1,227 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:smartspend/models/category_icon_option.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+class _DefaultCategory {
+  final String name;
+  final String type; // 'income' or 'expense'
+  final IconData icon;
+  final Color color;
+
+  const _DefaultCategory({
+    required this.name,
+    required this.type,
+    required this.icon,
+    required this.color,
+  });
+}
+
+const List<_DefaultCategory> kDefaultIncomeCategories = [
+  _DefaultCategory(
+    name: 'Awards',
+    type: 'income',
+    icon: Icons.card_giftcard,
+    color: Color(0xFF1565C0),
+  ),
+  _DefaultCategory(
+    name: 'Coupons',
+    type: 'income',
+    icon: Icons.percent,
+    color: Color(0xFFE53935),
+  ),
+  _DefaultCategory(
+    name: 'Food & Dining',
+    type: 'income',
+    icon: Icons.restaurant,
+    color: Color(0xFFD32F2F),
+  ),
+  _DefaultCategory(
+    name: 'Grants',
+    type: 'income',
+    icon: Icons.volunteer_activism,
+    color: Color(0xFF00796B),
+  ),
+  _DefaultCategory(
+    name: 'Lottery',
+    type: 'income',
+    icon: Icons.casino,
+    color: Color(0xFFC62828),
+  ),
+  _DefaultCategory(
+    name: 'Refunds',
+    type: 'income',
+    icon: Icons.refresh,
+    color: Color(0xFF2E7D32),
+  ),
+  _DefaultCategory(
+    name: 'Rental',
+    type: 'income',
+    icon: Icons.house,
+    color: Color(0xFF6A1B9A),
+  ),
+  _DefaultCategory(
+    name: 'Salary',
+    type: 'income',
+    icon: Icons.work,
+    color: Color(0xFF283593),
+  ),
+  _DefaultCategory(
+    name: 'Sale',
+    type: 'income',
+    icon: Icons.sell,
+    color: Color(0xFF2E7D32),
+  ),
+];
+
+const List<_DefaultCategory> kDefaultExpenseCategories = [
+  _DefaultCategory(
+    name: 'Bills',
+    type: 'expense',
+    icon: Icons.receipt_long,
+    color: Color(0xFF455A64),
+  ),
+  _DefaultCategory(
+    name: 'Car',
+    type: 'expense',
+    icon: Icons.directions_car,
+    color: Color(0xFF6A1B9A),
+  ),
+  _DefaultCategory(
+    name: 'Clothing',
+    type: 'expense',
+    icon: Icons.checkroom,
+    color: Color(0xFFFF9800),
+  ),
+  _DefaultCategory(
+    name: 'Education',
+    type: 'expense',
+    icon: Icons.school,
+    color: Color(0xFF3949AB),
+  ),
+  _DefaultCategory(
+    name: 'Electronics',
+    type: 'expense',
+    icon: Icons.devices,
+    color: Color(0xFF00897B),
+  ),
+  _DefaultCategory(
+    name: 'Entertainment',
+    type: 'expense',
+    icon: Icons.movie,
+    color: Color(0xFFAB47BC),
+  ),
+  _DefaultCategory(
+    name: 'Food',
+    type: 'expense',
+    icon: Icons.restaurant,
+    color: Color(0xFFE53935),
+  ),
+  _DefaultCategory(
+    name: 'Health',
+    type: 'expense',
+    icon: Icons.favorite,
+    color: Color(0xFFD81B60),
+  ),
+  _DefaultCategory(
+    name: 'Home',
+    type: 'expense',
+    icon: Icons.home,
+    color: Color(0xFF5D4037),
+  ),
+  _DefaultCategory(
+    name: 'Insurance',
+    type: 'expense',
+    icon: Icons.verified_user,
+    color: Color(0xFFFFA726),
+  ),
+  _DefaultCategory(
+    name: 'Shopping',
+    type: 'expense',
+    icon: Icons.shopping_bag,
+    color: Color(0xFF1976D2),
+  ),
+  _DefaultCategory(
+    name: 'Social',
+    type: 'expense',
+    icon: Icons.group,
+    color: Color(0xFF2E7D32),
+  ),
+  _DefaultCategory(
+    name: 'Sport',
+    type: 'expense',
+    icon: Icons.sports_soccer,
+    color: Color(0xFF43A047),
+  ),
+  _DefaultCategory(
+    name: 'Tax',
+    type: 'expense',
+    icon: Icons.receipt,
+    color: Color(0xFF8D6E63),
+  ),
+  _DefaultCategory(
+    name: 'Telephone',
+    type: 'expense',
+    icon: Icons.call,
+    color: Color(0xFF303F9F),
+  ),
+];
+
+const Map<String, String> _defaultCategoryIconKeys = {
+  'Awards': 'awards',
+  'Coupons': 'coupons',
+  'Food & Dining': 'food_income',
+  'Grants': 'grants',
+  'Lottery': 'lottery',
+  'Refunds': 'refunds',
+  'Rental': 'rental',
+  'Salary': 'salary',
+  'Sale': 'sale',
+  'Bills': 'bills',
+  'Car': 'car',
+  'Clothing': 'clothing',
+  'Education': 'education',
+  'Electronics': 'electronics',
+  'Entertainment': 'entertainment',
+  'Food': 'food',
+  'Health': 'health',
+  'Home': 'home',
+  'Insurance': 'insurance',
+  'Shopping': 'shopping',
+  'Social': 'social',
+  'Sport': 'sport',
+  'Tax': 'tax',
+  'Telephone': 'telephone',
+};
 
 class _CategoryItem {
   final String id;
   final String type;
   String name;
   int iconIndex;
+  String? iconId;
+  int? iconColor;
 
   _CategoryItem({
     required this.id,
     required this.type,
     required this.name,
     required this.iconIndex,
+    this.iconId,
+    this.iconColor,
   });
+
+  Map<String, dynamic> toDataMap() {
+    return {
+      'type': type,
+      'name': name,
+      'iconIndex': iconIndex,
+      'iconId': iconId,
+      'iconColor': iconColor,
+    };
+  }
 }
 
 class CategoriesScreen extends StatefulWidget {
@@ -30,26 +236,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
 
-  final List<Color> _categoryColors = const [
-    Color(0xFF64B6FF),
-    Color(0xFF7BD6C8),
-    Color(0xFFFFB870),
-    Color(0xFF8E97FD),
-    Color(0xFFFF8FA2),
-    Color(0xFF6ED1FF),
-  ];
-
-  final List<IconData> _categoryIcons = const [
-    Icons.restaurant,
-    Icons.directions_car,
-    Icons.home_rounded,
-    Icons.shopping_bag,
-    Icons.school,
-    Icons.favorite,
-    Icons.flight_takeoff,
-    Icons.savings,
-    Icons.sports_esports,
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _ensureDefaultCategories();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +329,41 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
+  Widget _buildCategoryIconGrid({
+    required String selectedId,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        for (final option in kCategoryIconOptions)
+          GestureDetector(
+            onTap: () => onSelected(option.id),
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: option.bgColor.withValues(alpha: 0.15),
+                border: Border.all(
+                  color: selectedId == option.id
+                      ? _themeService.primaryBlue
+                      : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: Icon(
+                option.icon,
+                color: option.bgColor,
+                size: 22,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildSection({required String title, required String type}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,6 +428,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 name: (data['name'] as String?) ?? 'Unnamed',
                                 iconIndex:
                                     (data['iconIndex'] as num?)?.toInt() ?? 0,
+                                iconId: (data['iconId'] as String?) ??
+                                    data['icon'] as String?,
+                                iconColor: (data['iconColor'] as num?)?.toInt() ??
+                                    (data['color'] as num?)?.toInt(),
                               ),
                             );
                           },
@@ -215,6 +445,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Widget _buildCategoryRow({required _CategoryItem category}) {
+    final iconOption = getCategoryIconOptionFromData(category.toDataMap());
+    final iconColor = getCategoryIconBgColor(category.toDataMap());
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -236,12 +469,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withValues(alpha: 0.12),
+              color: iconColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.category_rounded,
-              color: _themeService.primaryBlue,
+              iconOption.icon,
+              color: iconColor,
               size: 20,
             ),
           ),
@@ -282,33 +515,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     final TextEditingController nameController = TextEditingController(
       text: category.name,
     );
-    int selectedIconIndex = category.iconIndex;
-
-    final List<IconData> iconOptions = [
-      Icons.directions_car,
-      Icons.checkroom,
-      Icons.restaurant,
-      Icons.home,
-      Icons.shopping_cart,
-      Icons.receipt_long,
-      Icons.healing,
-      Icons.movie,
-      Icons.sports_tennis,
-      Icons.phone_android,
-    ];
-
-    final List<Color> iconColors = [
-      Colors.purple,
-      Colors.orange,
-      Colors.red,
-      Colors.pink,
-      Colors.blue,
-      Colors.deepOrange,
-      Colors.green,
-      Colors.indigo,
-      Colors.teal,
-      Colors.lime,
-    ];
+    final String selectedDefaultId =
+        getCategoryIconOptionFromData(category.toDataMap()).id;
+    String selectedIconId = category.iconId ?? selectedDefaultId;
 
     showDialog(
       context: context,
@@ -391,35 +600,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           color: _themeService.textSub.withValues(alpha: 0.2),
                         ),
                       ),
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          for (int i = 0; i < iconOptions.length; i++)
-                            GestureDetector(
-                              onTap: () => setStateDialog(() {
-                                selectedIconIndex = i;
-                              }),
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: iconColors[i % iconColors.length],
-                                  border: Border.all(
-                                    color: selectedIconIndex == i
-                                        ? Colors.white
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  iconOptions[i],
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                        ],
+                      child: _buildCategoryIconGrid(
+                        selectedId: selectedIconId,
+                        onSelected: (id) => setStateDialog(() {
+                          selectedIconId = id;
+                        }),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -467,6 +652,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               final updatedName = nameController.text.trim();
                               final currentUser = user;
 
+                              final selectedOption =
+                                  getCategoryIconOptionById(selectedIconId);
+                              final iconIndex = kCategoryIconOptions
+                                  .indexOf(selectedOption);
+
                               if (updatedName.isEmpty || currentUser == null) {
                                 Navigator.of(context).pop();
                                 return;
@@ -476,7 +666,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 uid: currentUser.uid,
                                 categoryId: category.id,
                                 name: updatedName,
-                                iconIndex: selectedIconIndex,
+                                iconIndex: iconIndex,
+                                iconId: selectedOption.id,
+                                iconColor: selectedOption.bgColor.value,
                               );
 
                               Navigator.of(context).pop();
@@ -556,7 +748,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Future<void> _showAddCategoryDialog() async {
     final TextEditingController nameController = TextEditingController();
-    int selectedIconIndex = 0;
+    String selectedIconId = kCategoryIconOptions.first.id;
     String selectedType = 'EXPENSE';
 
     await showDialog(
@@ -686,40 +878,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           color: _themeService.textSub.withValues(alpha: 0.2),
                         ),
                       ),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          for (int i = 0; i < _categoryIcons.length; i++)
-                            GestureDetector(
-                              onTap: () =>
-                                  setState(() => selectedIconIndex = i),
-                              child: Container(
-                                width: 52,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color:
-                                      _categoryColors[i %
-                                              _categoryColors.length]
-                                          .withValues(alpha: 0.15),
-                                  border: Border.all(
-                                    color: selectedIconIndex == i
-                                        ? _themeService.primaryBlue
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  _categoryIcons[i],
-                                  color:
-                                      _categoryColors[i %
-                                          _categoryColors.length],
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                        ],
+                      child: _buildCategoryIconGrid(
+                        selectedId: selectedIconId,
+                        onSelected: (id) => setState(() {
+                          selectedIconId = id;
+                        }),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -760,6 +923,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             onPressed: () async {
                               final name = nameController.text.trim();
                               final currentUser = user;
+                              final selectedOption =
+                                  getCategoryIconOptionById(selectedIconId);
+                              final iconIndex = kCategoryIconOptions
+                                  .indexOf(selectedOption);
 
                               if (name.isEmpty || currentUser == null) {
                                 Navigator.of(context).pop();
@@ -772,7 +939,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 uid: currentUser.uid,
                                 name: name,
                                 type: type,
-                                iconIndex: selectedIconIndex,
+                                iconIndex: iconIndex,
+                                iconId: selectedOption.id,
+                                iconColor: selectedOption.bgColor.value,
                               );
 
                               Navigator.of(context).pop();
@@ -793,5 +962,53 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         );
       },
     );
+  }
+
+  Future<void> _ensureDefaultCategories() async {
+    final currentUser = user;
+    if (currentUser == null) {
+      return;
+    }
+
+    final categoriesCollection =
+        FirebaseFirestore.instance.collection('categories');
+    final existing = await categoriesCollection
+        .where('owner', isEqualTo: currentUser.uid)
+        .limit(1)
+        .get();
+
+    if (existing.docs.isNotEmpty) {
+      return;
+    }
+
+    final allDefaults = [
+      ...kDefaultIncomeCategories,
+      ...kDefaultExpenseCategories,
+    ];
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (final category in allDefaults) {
+      final iconKey = _defaultCategoryIconKeys[category.name] ??
+          category.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+      final option = getCategoryIconOptionById(iconKey);
+      final iconIndex = kCategoryIconOptions.indexOf(option);
+      final docRef = categoriesCollection.doc();
+
+      batch.set(docRef, {
+        'name': category.name,
+        'type': category.type,
+        'owner': currentUser.uid,
+        'icon': iconKey,
+        'color': category.color.value,
+        'iconId': iconKey,
+        'iconColor': category.color.value,
+        'iconIndex': iconIndex < 0 ? 0 : iconIndex,
+        'isDefault': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
   }
 }
