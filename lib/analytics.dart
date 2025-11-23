@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:smartspend/models/category_icon_option.dart';
 import 'package:smartspend/screens/category_details_screen.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
@@ -121,6 +122,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               double income = 0;
                               double expenses = 0;
                               final Map<String, double> expenseByCategory = {};
+                              final Map<String, Map<String, dynamic>>
+                                  expenseCategoryMeta = {};
 
                               for (final doc in monthTransactions) {
                                 final data = doc.data();
@@ -151,6 +154,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                   expenseByCategory[category] =
                                       (expenseByCategory[category] ?? 0) +
                                           expenseValue;
+
+                                  expenseCategoryMeta.putIfAbsent(
+                                    category,
+                                    () => {
+                                      'iconId': data['iconId'],
+                                      'iconColor': data['iconColor'],
+                                      'iconIndex': data['iconIndex'],
+                                    },
+                                  );
                                 }
                               }
 
@@ -171,6 +183,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 _buildCategoryList(
                                   categoryTotals: expenseByCategory,
                                   totalExpenses: expenses,
+                                  categoryMeta: expenseCategoryMeta,
                                 ),
                               ];
 
@@ -525,11 +538,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget _buildCategoryList({
     required Map<String, double> categoryTotals,
     required double totalExpenses,
+    required Map<String, Map<String, dynamic>> categoryMeta,
   }) {
     final entries = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final textColor = _themeService.textMain;
-    final palette = _chartColors;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -573,19 +586,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   onTap: () => _openCategoryDetails(entries[i].key),
                   child: Row(
                     children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: palette[i % palette.length].withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.category_rounded,
-                          color: palette[i % palette.length],
-                          size: 20,
-                        ),
-                      ),
+                      Builder(builder: (context) {
+                        final data = categoryMeta[entries[i].key] ?? {};
+                        final iconOption =
+                            getCategoryIconOptionFromData(data);
+                        final iconColor = getCategoryIconBgColor(data);
+
+                        return Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: iconColor.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            iconOption.icon,
+                            color: iconColor,
+                            size: 20,
+                          ),
+                        );
+                      }),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -608,7 +628,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 backgroundColor:
                                     _themeService.textSub.withValues(alpha: 0.1),
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  palette[i % palette.length],
+                                  getCategoryIconBgColor(
+                                    categoryMeta[entries[i].key] ?? {},
+                                  ),
                                 ),
                                 minHeight: 6,
                               ),

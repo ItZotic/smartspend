@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:smartspend/models/category_icon_option.dart';
 import 'package:smartspend/services/firestore_service.dart';
 import 'package:smartspend/services/theme_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,13 +10,27 @@ class _CategoryItem {
   final String type;
   String name;
   int iconIndex;
+  String? iconId;
+  int? iconColor;
 
   _CategoryItem({
     required this.id,
     required this.type,
     required this.name,
     required this.iconIndex,
+    this.iconId,
+    this.iconColor,
   });
+
+  Map<String, dynamic> toDataMap() {
+    return {
+      'type': type,
+      'name': name,
+      'iconIndex': iconIndex,
+      'iconId': iconId,
+      'iconColor': iconColor,
+    };
+  }
 }
 
 class CategoriesScreen extends StatefulWidget {
@@ -29,27 +44,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   final user = FirebaseAuth.instance.currentUser;
   final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
-
-  final List<Color> _categoryColors = const [
-    Color(0xFF64B6FF),
-    Color(0xFF7BD6C8),
-    Color(0xFFFFB870),
-    Color(0xFF8E97FD),
-    Color(0xFFFF8FA2),
-    Color(0xFF6ED1FF),
-  ];
-
-  final List<IconData> _categoryIcons = const [
-    Icons.restaurant,
-    Icons.directions_car,
-    Icons.home_rounded,
-    Icons.shopping_bag,
-    Icons.school,
-    Icons.favorite,
-    Icons.flight_takeoff,
-    Icons.savings,
-    Icons.sports_esports,
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +132,41 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
+  Widget _buildCategoryIconGrid({
+    required String selectedId,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        for (final option in kCategoryIconOptions)
+          GestureDetector(
+            onTap: () => onSelected(option.id),
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: option.bgColor.withValues(alpha: 0.15),
+                border: Border.all(
+                  color: selectedId == option.id
+                      ? _themeService.primaryBlue
+                      : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: Icon(
+                option.icon,
+                color: option.bgColor,
+                size: 22,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildSection({required String title, required String type}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,6 +231,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 name: (data['name'] as String?) ?? 'Unnamed',
                                 iconIndex:
                                     (data['iconIndex'] as num?)?.toInt() ?? 0,
+                                iconId: data['iconId'] as String?,
+                                iconColor: (data['iconColor'] as num?)?.toInt(),
                               ),
                             );
                           },
@@ -215,6 +246,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Widget _buildCategoryRow({required _CategoryItem category}) {
+    final iconOption = getCategoryIconOptionFromData(category.toDataMap());
+    final iconColor = getCategoryIconBgColor(category.toDataMap());
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -236,12 +270,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _themeService.primaryBlue.withValues(alpha: 0.12),
+              color: iconColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.category_rounded,
-              color: _themeService.primaryBlue,
+              iconOption.icon,
+              color: iconColor,
               size: 20,
             ),
           ),
@@ -282,33 +316,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     final TextEditingController nameController = TextEditingController(
       text: category.name,
     );
-    int selectedIconIndex = category.iconIndex;
-
-    final List<IconData> iconOptions = [
-      Icons.directions_car,
-      Icons.checkroom,
-      Icons.restaurant,
-      Icons.home,
-      Icons.shopping_cart,
-      Icons.receipt_long,
-      Icons.healing,
-      Icons.movie,
-      Icons.sports_tennis,
-      Icons.phone_android,
-    ];
-
-    final List<Color> iconColors = [
-      Colors.purple,
-      Colors.orange,
-      Colors.red,
-      Colors.pink,
-      Colors.blue,
-      Colors.deepOrange,
-      Colors.green,
-      Colors.indigo,
-      Colors.teal,
-      Colors.lime,
-    ];
+    final String selectedDefaultId =
+        getCategoryIconOptionFromData(category.toDataMap()).id;
+    String selectedIconId = category.iconId ?? selectedDefaultId;
 
     showDialog(
       context: context,
@@ -391,35 +401,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           color: _themeService.textSub.withValues(alpha: 0.2),
                         ),
                       ),
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          for (int i = 0; i < iconOptions.length; i++)
-                            GestureDetector(
-                              onTap: () => setStateDialog(() {
-                                selectedIconIndex = i;
-                              }),
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: iconColors[i % iconColors.length],
-                                  border: Border.all(
-                                    color: selectedIconIndex == i
-                                        ? Colors.white
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  iconOptions[i],
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                        ],
+                      child: _buildCategoryIconGrid(
+                        selectedId: selectedIconId,
+                        onSelected: (id) => setStateDialog(() {
+                          selectedIconId = id;
+                        }),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -467,6 +453,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               final updatedName = nameController.text.trim();
                               final currentUser = user;
 
+                              final selectedOption =
+                                  getCategoryIconOptionById(selectedIconId);
+                              final iconIndex = kCategoryIconOptions
+                                  .indexOf(selectedOption);
+
                               if (updatedName.isEmpty || currentUser == null) {
                                 Navigator.of(context).pop();
                                 return;
@@ -476,7 +467,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 uid: currentUser.uid,
                                 categoryId: category.id,
                                 name: updatedName,
-                                iconIndex: selectedIconIndex,
+                                iconIndex: iconIndex,
+                                iconId: selectedOption.id,
+                                iconColor: selectedOption.bgColor.value,
                               );
 
                               Navigator.of(context).pop();
@@ -556,7 +549,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Future<void> _showAddCategoryDialog() async {
     final TextEditingController nameController = TextEditingController();
-    int selectedIconIndex = 0;
+    String selectedIconId = kCategoryIconOptions.first.id;
     String selectedType = 'EXPENSE';
 
     await showDialog(
@@ -686,40 +679,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           color: _themeService.textSub.withValues(alpha: 0.2),
                         ),
                       ),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          for (int i = 0; i < _categoryIcons.length; i++)
-                            GestureDetector(
-                              onTap: () =>
-                                  setState(() => selectedIconIndex = i),
-                              child: Container(
-                                width: 52,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color:
-                                      _categoryColors[i %
-                                              _categoryColors.length]
-                                          .withValues(alpha: 0.15),
-                                  border: Border.all(
-                                    color: selectedIconIndex == i
-                                        ? _themeService.primaryBlue
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  _categoryIcons[i],
-                                  color:
-                                      _categoryColors[i %
-                                          _categoryColors.length],
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                        ],
+                      child: _buildCategoryIconGrid(
+                        selectedId: selectedIconId,
+                        onSelected: (id) => setState(() {
+                          selectedIconId = id;
+                        }),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -760,6 +724,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             onPressed: () async {
                               final name = nameController.text.trim();
                               final currentUser = user;
+                              final selectedOption =
+                                  getCategoryIconOptionById(selectedIconId);
+                              final iconIndex = kCategoryIconOptions
+                                  .indexOf(selectedOption);
 
                               if (name.isEmpty || currentUser == null) {
                                 Navigator.of(context).pop();
@@ -772,7 +740,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 uid: currentUser.uid,
                                 name: name,
                                 type: type,
-                                iconIndex: selectedIconIndex,
+                                iconIndex: iconIndex,
+                                iconId: selectedOption.id,
+                                iconColor: selectedOption.bgColor.value,
                               );
 
                               Navigator.of(context).pop();
