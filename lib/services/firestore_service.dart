@@ -267,7 +267,7 @@ class FirestoreService {
     return _firestore
         .collection('accounts')
         .where('uid', isEqualTo: uid)
-        .orderBy('createdAt', descending: false)
+        .orderBy('createdAt')
         .snapshots();
   }
 
