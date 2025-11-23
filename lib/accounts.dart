@@ -55,8 +55,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
-                          .collection('accounts')
-                          .where('uid', isEqualTo: user!.uid)
+                          .collection('transactions')
+                          .where('userId', isEqualTo: user?.uid)
                           .snapshots(),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
@@ -77,20 +77,101 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           );
                         }
 
-                        return ListView.builder(
+                        final Map<String, double> accountBalances = {};
+
+                        for (final doc in docs) {
+                          final data =
+                              doc.data() as Map<String, dynamic>? ?? {};
+                          final double amount =
+                              (data['amount'] as num?)?.toDouble() ?? 0.0;
+                          final String type =
+                              (data['type'] ?? data['transactionType'] ?? '')
+                                  .toString()
+                                  .toLowerCase();
+                          final String accountName =
+                              (data['account'] ?? data['paymentMethod'] ??
+                                      'Unknown Account')
+                                  .toString();
+
+                          double delta = 0.0;
+                          if (type == 'income') {
+                            delta = amount;
+                          } else if (type == 'expense') {
+                            delta = -amount;
+                          }
+
+                          accountBalances[accountName] =
+                              (accountBalances[accountName] ?? 0.0) + delta;
+                        }
+
+                        if (accountBalances.isEmpty) {
+                          return Center(
+                            child: Text(
+                              "No accounts added yet",
+                              style: TextStyle(color: _themeService.textSub),
+                            ),
+                          );
+                        }
+
+                        final entries = accountBalances.entries.toList()
+                          ..sort((a, b) => a.key.compareTo(b.key));
+
+                        return ListView.separated(
                           controller: widget.scrollController,
-                          padding: const EdgeInsets.all(20),
-                          itemCount: docs.length,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: entries.length,
+                          separatorBuilder: (context, index) => const SizedBox(
+                            height: 12,
+                          ),
                           itemBuilder: (context, index) {
-                            final data =
-                                docs[index].data() as Map<String, dynamic>;
-                            final double balance =
-                                (data['balance'] as num?)?.toDouble() ?? 0.0;
-                            return _buildAccountCard(
-                              data['name'] ?? 'Account',
-                              balance,
-                              _getIconForAccount(data['type'] ?? 'Cash'),
-                              docs[index].id,
+                            final entry = entries[index];
+                            final formattedBalance =
+                                "₱${entry.value.toStringAsFixed(2)}";
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _themeService.cardBg,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(
+                                      _themeService.isDarkMode ? 0.3 : 0.05,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: _themeService.primaryBlue
+                                        .withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.account_balance_wallet,
+                                    color: _themeService.primaryBlue,
+                                  ),
+                                ),
+                                title: Text(
+                                  entry.key,
+                                  style: TextStyle(
+                                    color: _themeService.textMain,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                trailing: Text(
+                                  formattedBalance,
+                                  style: TextStyle(
+                                    color: _themeService.textMain,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
                             );
                           },
                         );
@@ -100,11 +181,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 ],
               ),
             ),
-          ),
-          floatingActionButton: FloatingActionButton(
-            backgroundColor: _themeService.primaryBlue,
-            child: const Icon(Icons.add, color: Colors.white),
-            onPressed: _showAddAccountDialog,
           ),
         );
       },
