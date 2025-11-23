@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -186,9 +189,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black
-                  .withAlpha(
-                      (255 * (_themeService.isDarkMode ? 0.3 : 0.05)).round()),
+              color: Colors.black.withValues(
+                alpha: (255 * (_themeService.isDarkMode ? 0.3 : 0.05)).round(),
+              ),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -200,7 +203,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _themeService.primaryBlue
-                    .withAlpha((255 * 0.1).round()),
+                    .withValues(alpha: (255 * 0.1).round()),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: _themeService.primaryBlue, size: 28),
@@ -299,8 +302,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   color: _themeService.cardBg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color:
-                        _themeService.primaryBlue.withAlpha((255 * 0.3).round()),
+                    color: _themeService.primaryBlue
+                        .withValues(alpha: (255 * 0.3).round()),
                   ),
                 ),
                 child: DropdownButtonHideUnderline(
@@ -432,7 +435,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                               });
                         }
 
-                        if (!mounted || !context.mounted) {
+                        if (!mounted) {
                           return;
                         }
 
@@ -473,24 +476,24 @@ class _AccountsScreenState extends State<AccountsScreen> {
           style: TextStyle(color: _themeService.textSub),
         ),
         actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () async {
-                await FirebaseFirestore.instance
-                    .collection('accounts')
-                    .doc(docId)
-                    .delete();
-                if (!mounted || !ctx.mounted) {
-                  return;
-                }
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              await FirebaseFirestore.instance
+                  .collection('accounts')
+                  .doc(docId)
+                  .delete();
+              if (!mounted) {
+                return;
+              }
 
-                Navigator.pop(ctx);
-              },
-              child: const Text("Delete", style: TextStyle(color: Colors.red)),
-            ),
+              Navigator.pop(ctx);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
