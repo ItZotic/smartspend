@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -31,8 +32,8 @@ class _HomeScreenState extends State<HomeScreen> {
       DraggableScrollableController();
 
   // State for selected account (null means "All Accounts")
-  String? _selectedAccountName;
   String? _selectedAccountId;
+  String _selectedAccountName = 'All Accounts';
 
   @override
   void dispose() {
@@ -40,7 +41,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> _transactionsStream() {
+    if (user == null) return const Stream.empty();
+
+    return _firestoreService.streamTransactions(
+      uid: user!.uid,
+      accountName: _selectedAccountId == null ? null : _selectedAccountName,
+    );
+  }
+
   void _showAccountPicker() {
+    if (user == null) return;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: _themeService.sheetColor,
@@ -48,88 +60,102 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Select Account",
-                style: TextStyle(
-                  color: _themeService.textMain,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Select Account",
+                  style: TextStyle(
+                    color: _themeService.textMain,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('accounts')
-                      .where('uid', isEqualTo: user!.uid)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData)
-                      return const Center(child: CircularProgressIndicator());
-                    final docs = snapshot.data!.docs;
+                const SizedBox(height: 16),
+                Flexible(
+                  child: StreamBuilder<
+                      QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _firestoreService.streamAccounts(uid: user!.uid),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
 
-                    // Add "All Accounts" option
-                    final allOption = ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: _themeService.primaryBlue.withOpacity(
-                          0.1,
-                        ),
-                        child: Icon(
-                          Icons.account_balance,
-                          color: _themeService.primaryBlue,
-                        ),
-                      ),
-                      title: Text(
-                        "All Accounts",
-                        style: TextStyle(color: _themeService.textMain),
-                      ),
-                      onTap: () {
-                        setState(() {
-                          _selectedAccountName = null;
-                          _selectedAccountId = null;
-                        });
-                        Navigator.pop(context);
-                      },
-                    );
+                      final docs = snapshot.data?.docs ?? [];
 
-                    return ListView(
-                      children: [
-                        allOption,
-                        ...docs.map((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          return ListTile(
+                      return ListView(
+                        shrinkWrap: true,
+                        children: [
+                          ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: _themeService.primaryBlue
-                                  .withOpacity(0.1),
+                              backgroundColor:
+                                  _themeService.primaryBlue.withOpacity(0.1),
                               child: Icon(
-                                Icons.credit_card,
+                                Icons.account_balance,
                                 color: _themeService.primaryBlue,
                               ),
                             ),
                             title: Text(
-                              data['name'],
+                              "All Accounts",
                               style: TextStyle(color: _themeService.textMain),
                             ),
                             onTap: () {
                               setState(() {
-                                _selectedAccountName = data['name'];
-                                _selectedAccountId = doc.id;
+                                _selectedAccountId = null;
+                                _selectedAccountName = 'All Accounts';
                               });
                               Navigator.pop(context);
                             },
-                          );
-                        }),
-                      ],
-                    );
-                  },
+                          ),
+                          const SizedBox(height: 8),
+                          if (docs.isEmpty)
+                            Center(
+                              child: Text(
+                                "No accounts found",
+                                style: TextStyle(color: _themeService.textSub),
+                              ),
+                            )
+                          else
+                            ...docs.map((doc) {
+                              final data = doc.data();
+                              final accountName =
+                                  (data['name'] ?? 'Unnamed Account')
+                                      .toString();
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: _themeService.primaryBlue
+                                      .withOpacity(0.1),
+                                  child: Icon(
+                                    Icons.credit_card,
+                                    color: _themeService.primaryBlue,
+                                  ),
+                                ),
+                                title: Text(
+                                  accountName,
+                                  style:
+                                      TextStyle(color: _themeService.textMain),
+                                ),
+                                onTap: () {
+                                  setState(() {
+                                    _selectedAccountId = doc.id;
+                                    _selectedAccountName = accountName;
+                                  });
+                                  Navigator.pop(context);
+                                },
+                              );
+                            }),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -270,34 +296,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       // Balance Card
                       // We need to determine if we are fetching ALL transactions or ONE account's transactions
-                      StreamBuilder<QuerySnapshot>(
-                        stream: _selectedAccountName == null
-                            ? _firestoreService.streamTransactions(
-                                uid: user!.uid,
-                              ) // All
-                            : FirebaseFirestore.instance
-                                  .collection(
-                                    'transactions',
-                                  ) // Filtered by account name
-                                  .where('uid', isEqualTo: user!.uid)
-                                  .where(
-                                    'account',
-                                    isEqualTo: _selectedAccountName,
-                                  )
-                                  .orderBy('createdAt', descending: true)
-                                  .snapshots(),
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: _transactionsStream(),
                         builder: (context, snapshot) {
                           double displayBalance = 0;
 
-                          // If "All Accounts", sum transactions OR fetch all accounts and sum balances
-                          // For simplicity with current structure: sum transactions shown
                           if (snapshot.hasData) {
                             for (var doc in snapshot.data!.docs) {
-                              final data = doc.data() as Map<String, dynamic>;
+                              final data = doc.data();
                               final amt =
                                   (data['amount'] as num?)?.toDouble() ?? 0.0;
-                              // If type is expense, subtract? Or is amount stored signed?
-                              // Based on add_transaction, Expense is stored as negative.
                               displayBalance += amt;
                             }
                           }
@@ -374,8 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               child: Row(
                                                 children: [
                                                   Text(
-                                                    _selectedAccountName ??
-                                                        "All Accounts",
+                                                    _selectedAccountName,
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 12,
@@ -400,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _selectedAccountName == null
+                                            _selectedAccountId == null
                                                 ? "Total Balance"
                                                 : "$_selectedAccountName Balance",
                                             style: const TextStyle(
@@ -622,20 +629,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         // Transaction List (Using same stream logic as Balance Card to filter)
                         Expanded(
-                          child: StreamBuilder<QuerySnapshot>(
-                            stream: _selectedAccountName == null
-                                ? _firestoreService.streamTransactions(
-                                    uid: user!.uid,
-                                  )
-                                : FirebaseFirestore.instance
-                                      .collection('transactions')
-                                      .where('uid', isEqualTo: user!.uid)
-                                      .where(
-                                        'account',
-                                        isEqualTo: _selectedAccountName,
-                                      )
-                                      .orderBy('createdAt', descending: true)
-                                      .snapshots(),
+                          child: StreamBuilder<
+                              QuerySnapshot<Map<String, dynamic>>>(
+                            stream: _transactionsStream(),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState ==
                                   ConnectionState.waiting) {
