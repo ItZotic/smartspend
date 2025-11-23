@@ -19,6 +19,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   final user = FirebaseAuth.instance.currentUser;
   final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
+  final TextEditingController _monthlyBudgetController = TextEditingController();
 
   DateTime _selectedMonth = DateTime(
     DateTime.now().year,
@@ -43,14 +44,17 @@ class _BudgetScreenState extends State<BudgetScreen> {
     });
   }
 
-  double get _totalBudget =>
-      _budgetLimits.values.fold(0.0, (sum, value) => sum + value);
-
   double get _totalSpent =>
       _spentAmounts.values.fold(0.0, (sum, value) => sum + value);
 
   Map<String, dynamic> _getCategoryMeta(String categoryName) {
     return _expenseCategoryMeta[categoryName] ?? {};
+  }
+
+  @override
+  void dispose() {
+    _monthlyBudgetController.dispose();
+    super.dispose();
   }
 
   @override
@@ -134,10 +138,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           children: [
                             _buildMonthSelector(),
                             const SizedBox(height: 16),
-                            _buildBudgetSummaryCard(
-                              totalBudget: _totalBudget,
-                              totalSpent: _totalSpent,
-                            ),
+                            _buildMonthlyBudgetSection(),
                             const SizedBox(height: 24),
                             _buildBudgetedSection(expenseCategories),
                             const SizedBox(height: 24),
@@ -209,9 +210,67 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
+  Widget _buildMonthlyBudgetSection() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _firestoreService.streamMonthlyBudget(
+        uid: user!.uid,
+        year: _selectedMonth.year,
+        month: _selectedMonth.month,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              color: _themeService.primaryBlue,
+            ),
+          );
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return _buildSetBudgetButton();
+        }
+
+        final data = docs.first.data();
+        final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+
+        return _buildBudgetSummaryCard(
+          totalBudget: amount,
+          totalSpent: _totalSpent,
+          onEdit: () => _showMonthlyBudgetDialog(currentAmount: amount),
+        );
+      },
+    );
+  }
+
+  Widget _buildSetBudgetButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _themeService.primaryBlue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onPressed: _showMonthlyBudgetDialog,
+        child: const Text(
+          'Set budget',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBudgetSummaryCard({
     required double totalBudget,
     required double totalSpent,
+    VoidCallback? onEdit,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -228,65 +287,220 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "TOTAL BUDGET",
-                  style: TextStyle(
-                    color: _themeService.textSub,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
+          if (onEdit != null)
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: Icon(
+                  Icons.edit,
+                  color: _themeService.textMain.withValues(alpha: 0.7),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _themeService.formatCurrency(totalBudget),
-                  style: TextStyle(
-                    color: _themeService.textMain,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+                onPressed: onEdit,
+              ),
             ),
-          ),
-          Container(
-            width: 1,
-            height: 56,
-            color: _themeService.textSub.withValues(alpha: 0.2),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  "TOTAL SPENT",
-                  style: TextStyle(
-                    color: _themeService.textSub,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "TOTAL BUDGET",
+                      style: TextStyle(
+                        color: _themeService.textSub,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _themeService.formatCurrency(totalBudget),
+                      style: TextStyle(
+                        color: _themeService.textMain,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _themeService.formatCurrency(totalSpent),
-                  style: const TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+              ),
+              Container(
+                width: 1,
+                height: 56,
+                color: _themeService.textSub.withValues(alpha: 0.2),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      "TOTAL SPENT",
+                      style: TextStyle(
+                        color: _themeService.textSub,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _themeService.formatCurrency(totalSpent),
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showMonthlyBudgetDialog({double? currentAmount}) async {
+    _monthlyBudgetController.text =
+        currentAmount != null ? currentAmount.toString() : '';
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          backgroundColor: _themeService.cardBg,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Text(
+                    'Set budget',
+                    style: TextStyle(
+                      color: _themeService.textMain,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Amount',
+                  style: TextStyle(
+                    color: _themeService.textMain,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _monthlyBudgetController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    hintText: '0.00',
+                    filled: true,
+                    fillColor: _themeService.cardBg,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _themeService.textSub.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: _themeService.primaryBlue,
+                      ),
+                    ),
+                  ),
+                  style: TextStyle(color: _themeService.textMain),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _themeService.textMain,
+                          side: BorderSide(
+                            color: _themeService.textSub.withValues(alpha: 0.3),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          _monthlyBudgetController.clear();
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text(
+                          'CANCEL',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _themeService.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final enteredBudget = double.tryParse(
+                            _monthlyBudgetController.text.trim(),
+                          );
+                          final currentUser = user;
+
+                          if (enteredBudget == null || currentUser == null) {
+                            Navigator.of(context).pop();
+                            _monthlyBudgetController.clear();
+                            return;
+                          }
+
+                          await _firestoreService.setMonthlyBudget(
+                            uid: currentUser.uid,
+                            year: _selectedMonth.year,
+                            month: _selectedMonth.month,
+                            amount: enteredBudget,
+                          );
+
+                          if (!mounted) {
+                            return;
+                          }
+
+                          Navigator.of(context).pop();
+                          _monthlyBudgetController.clear();
+                        },
+                        child: const Text(
+                          'SAVE',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
