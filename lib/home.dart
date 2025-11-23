@@ -402,8 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               child: Row(
                                                 children: [
                                                   Text(
-                                                    _selectedAccountName ??
-                                                        "All Accounts",
+                                                    _selectedAccountName,
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 12,
@@ -428,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _selectedAccountName == null
+                                            _selectedAccountId == null
                                                 ? "Total Balance"
                                                 : "$_selectedAccountName Balance",
                                             style: const TextStyle(
