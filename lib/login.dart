@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smartspend/services/theme_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,6 +11,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -29,6 +31,65 @@ class _LoginScreenState extends State<LoginScreen> {
       _themeService.setThemeMode('Dark');
     } else {
       _themeService.setThemeMode('System default');
+    }
+  }
+
+  void _showSnackBar(String message, {Color color = Colors.red}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+      ),
+    );
+  }
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      // Firebase Authentication
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      // Navigate to main menu on success
+      Navigator.pushReplacementNamed(context, '/main_menu');
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Login failed';
+      
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found with this email';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This account has been disabled';
+          break;
+        case 'invalid-credential':
+          errorMessage = 'Invalid email or password';
+          break;
+        default:
+          errorMessage = 'Login failed: ${e.message}';
+      }
+      
+      _showSnackBar(errorMessage);
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -108,6 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
+                        enabled: !_isLoading,
                         style: TextStyle(
                           color: isDark ? Colors.white : Colors.black,
                         ),
@@ -174,6 +236,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _passwordController,
                         obscureText: !_isPasswordVisible,
                         textInputAction: TextInputAction.done,
+                        enabled: !_isLoading,
+                        onFieldSubmitted: (_) => _login(),
                         style: TextStyle(
                           color: isDark ? Colors.white : Colors.black,
                         ),
@@ -260,27 +324,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             elevation: 0,
                           ),
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              // Handle login logic here
-                              final email = _emailController.text;
-                              final password = _passwordController.text;
-                              
-                              // TODO: Implement your login logic
-                              print('Email: $email');
-                              print('Password: $password');
-                              
-                              // Example: Navigate to home screen on success
-                              // Navigator.pushReplacementNamed(context, '/home');
-                            }
-                          },
-                          child: const Text(
-                            "Login",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          onPressed: _isLoading ? null : _login,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text(
+                                  "Login",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
 
@@ -296,9 +356,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/register');
-                            },
+                            onPressed: _isLoading
+                                ? null
+                                : () {
+                                    Navigator.pushNamed(context, '/register');
+                                  },
                             child: const Text(
                               "Sign Up",
                               style: TextStyle(
