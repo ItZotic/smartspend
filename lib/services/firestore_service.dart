@@ -335,9 +335,7 @@ class FirestoreService {
       'type': type,
       'owner': uid,
       'icon': iconString,
-      'iconId': iconString,
       'color': colorValue ?? 0xFF2979FF,
-      'iconColor': colorValue ?? 0xFF2979FF,
       'iconIndex': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -359,8 +357,6 @@ class FirestoreService {
       'owner': uid,
       'iconIndex': iconIndex,
       'iconId': iconId,
-      'icon': iconId,
-      'color': iconColor,
       'iconColor': iconColor,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -388,12 +384,10 @@ class FirestoreService {
 
     if (iconId != null) {
       updates['iconId'] = iconId;
-      updates['icon'] = iconId;
     }
 
     if (iconColor != null) {
       updates['iconColor'] = iconColor;
-      updates['color'] = iconColor;
     }
 
     await _firestore

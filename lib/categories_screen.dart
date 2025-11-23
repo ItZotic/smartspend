@@ -237,12 +237,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   final ThemeService _themeService = ThemeService();
 
   @override
-  void initState() {
-    super.initState();
-    _ensureDefaultCategories();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _themeService,
@@ -428,10 +422,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 name: (data['name'] as String?) ?? 'Unnamed',
                                 iconIndex:
                                     (data['iconIndex'] as num?)?.toInt() ?? 0,
-                                iconId: (data['iconId'] as String?) ??
-                                    data['icon'] as String?,
-                                iconColor: (data['iconColor'] as num?)?.toInt() ??
-                                    (data['color'] as num?)?.toInt(),
+                                iconId: data['iconId'] as String?,
+                                iconColor: (data['iconColor'] as num?)?.toInt(),
                               ),
                             );
                           },
