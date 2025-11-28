@@ -442,7 +442,23 @@ Future<Map<String, double>> getCategoryBudgetsForMonth({
 
     return spent;
   }
-  
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamExpensesForMonth({
+  required String uid,
+  required int year,
+  required int month,
+}) {
+  final start = DateTime(year, month, 1);
+  final end = DateTime(year, month + 1, 1);
+
+  return _firestore
+      .collection('transactions')
+      .where('uid', isEqualTo: uid)
+      // no type filter here; we’ll just sum by categoryName
+      .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+      .where('date', isLessThan: Timestamp.fromDate(end))
+      .snapshots();
+}
+
   Stream<QuerySnapshot<Map<String, dynamic>>> streamMonthlyBudget({
     required String uid,
     required int year,
