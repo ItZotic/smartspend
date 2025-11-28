@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class _DefaultCategory {
@@ -310,6 +312,18 @@ Future<void> setBudgetLimit({
     });
   }
 }
+Future<void> deleteBudgetLimit({
+  required String uid,
+  required String categoryName,
+  required int year,
+  required int month,
+}) async {
+  final monthKey = '$year-${month.toString().padLeft(2, '0')}';
+  final docId = '${uid}_${categoryName}_$monthKey';
+
+  final docRef = _firestore.collection('budgets').doc(docId);
+  await docRef.delete();
+}
 
   Future<void> setMonthlyBudget({
     required String uid,
@@ -363,23 +377,19 @@ Future<Map<String, double>> getCategoryBudgetsForMonth({
 }) async {
   final monthKey = '$year-${month.toString().padLeft(2, '0')}';
 
-  // 🔹 Very simple: load ALL docs in 'budgets'
   final snapshot = await _firestore.collection('budgets').get();
 
   final budgets = <String, double>{};
 
-  // DEBUG: see what Firestore actually returns
-  // ignore: avoid_print
   print('--- All budgets docs from Firestore ---');
   for (final doc in snapshot.docs) {
-    // ignore: avoid_print
+
     print('${doc.id} -> ${doc.data()}');
   }
 
   for (final doc in snapshot.docs) {
     final data = doc.data();
 
-    // Make sure uid + month match
     final docUid = data['uid'] as String?;
     final docMonth = data['month'] as String?;
     if (docUid != uid || docMonth != monthKey) continue;
