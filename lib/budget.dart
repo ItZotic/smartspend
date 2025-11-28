@@ -180,64 +180,94 @@ class _BudgetScreenState extends State<BudgetScreen>{
 
             _expenseCategoryMeta = expenseCategoryMeta;
 
-            return Scaffold(
-              body: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [_themeService.bgTop, _themeService.bgBottom],
-                  ),
-                ),
-                child: SafeArea(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 12.0,
-                        ),
-                        child: Center(
-                          child: Text(
-                            "Budgets",
-                            style: TextStyle(
-                              color: _themeService.textMain,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _firestoreService.streamExpensesForMonth(
+                uid: user!.uid,
+                year: _selectedMonth.year,
+                month: _selectedMonth.month,
+              ),
+              builder: (context, txSnapshot) {
+                final spentByCategory = <String, double>{};
+
+                final txDocs = txSnapshot.data?.docs ?? [];
+                for (final doc in txDocs) {
+                  final data = doc.data();
+                  final categoryName =
+                      (data['categoryName'] ?? data['category']) as String?;
+                  final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+
+                  if (categoryName != null) {
+                    spentByCategory.update(
+                      categoryName,
+                      (current) => current + amount.abs(),
+                      ifAbsent: () => amount.abs(),
+                    );
+                  }
+                }
+
+                return Scaffold(
+                  body: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [_themeService.bgTop, _themeService.bgBottom],
+                      ),
+                    ),
+                    child: SafeArea(
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 12.0,
+                            ),
+                            child: Center(
+                              child: Text(
+                                "Budgets",
+                                style: TextStyle(
+                                  color: _themeService.textMain,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      Expanded(
-                        child: ListView(
-                          controller: widget.scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                          Expanded(
+                            child: ListView(
+                              controller: widget.scrollController,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              children: [
+                                _buildMonthSelector(),
+                                const SizedBox(height: 24),
+                                if (_isLoadingBudgets &&
+                                    _budgetedCategories.isEmpty)
+                                  Center(
+                                    child: CircularProgressIndicator(
+                                      color: _themeService.primaryBlue,
+                                    ),
+                                  )
+                                else ...[
+                                  _buildBudgetedSection(
+                                    expenseCategories,
+                                    spentByCategory,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _buildNotBudgetedSection(expenseCategories),
+                                ],
+                                const SizedBox(height: 80),
+                              ],
+                            ),
                           ),
-                          children: [
-                            _buildMonthSelector(),
-                            const SizedBox(height: 24),
-                            if (_isLoadingBudgets &&
-                                _budgetedCategories.isEmpty)
-                              Center(
-                                child: CircularProgressIndicator(
-                                  color: _themeService.primaryBlue,
-                                ),
-                              )
-                            else ...[
-                              _buildBudgetedSection(expenseCategories),
-                              const SizedBox(height: 24),
-                              _buildNotBudgetedSection(expenseCategories),
-                            ],
-                            const SizedBox(height: 80),
-                          ],
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         );
@@ -278,7 +308,10 @@ class _BudgetScreenState extends State<BudgetScreen>{
     );
   }
 
-  Widget _buildBudgetedSection(List<String> allCategories) {
+  Widget _buildBudgetedSection(
+    List<String> allCategories,
+    Map<String, double> spentByCategory,
+  ) {
     if (allCategories.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -344,7 +377,7 @@ class _BudgetScreenState extends State<BudgetScreen>{
                   (category) => _buildBudgetedRow(
                     category,
                     _budgetLimits[category] ?? 0,
-                    _spentAmounts[category] ?? 0,
+                    spentByCategory[category] ?? 0,
                   ),
                 )
                 .toList(),
