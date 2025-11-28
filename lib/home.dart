@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -704,21 +706,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               }
 
                               return ListView.builder(
-                                controller: sheetController,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 10,
-                                ),
-                                itemCount: filteredDocs.length,
-                                itemBuilder: (context, index) {
-                                  final data =
-                                      filteredDocs[index].data() as Map<String, dynamic>;
-                                  return _buildDarkTransactionTile(
-                                    filteredDocs[index],
-                                    data,
-                                  );
-                                },
-                              );
+                                  controller: sheetController,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 10,
+                                  ),
+                                  itemCount: filteredDocs.length,
+                                  itemBuilder: (context, index) {
+                                    final data = filteredDocs[index].data();
+                                    return _buildDarkTransactionTile(
+                                      filteredDocs[index],
+                                      data,
+                                    );
+                                  },
+                                );
                             },
                           ),
                         ),

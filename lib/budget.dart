@@ -1,3 +1,4 @@
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -15,7 +16,7 @@ class BudgetScreen extends StatefulWidget {
   State<BudgetScreen> createState() => _BudgetScreenState();
 }
 
-class _BudgetScreenState extends State<BudgetScreen> {
+class _BudgetScreenState extends State<BudgetScreen>{
   final user = FirebaseAuth.instance.currentUser;
   final FirestoreService _firestoreService = FirestoreService();
   final ThemeService _themeService = ThemeService();
@@ -31,7 +32,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
   final Map<String, double> _spentAmounts = {};
   Map<String, Map<String, dynamic>> _expenseCategoryMeta = {};
 
+  bool _isLoadingBudgets = false;
+
   String get _monthLabel => DateFormat.yMMMM().format(_selectedMonth);
+
 
   @override
   void initState() {
@@ -46,9 +50,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
         _selectedMonth.month + offset,
         1,
       );
-      _budgetedCategories.clear();
-      _budgetLimits.clear();
-      _spentAmounts.clear();
     });
 
     _loadBudgetsForSelectedMonth();
@@ -58,54 +59,78 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return _expenseCategoryMeta[categoryName] ?? {};
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _loadBudgetsForSelectedMonth() async {
     final currentUser = user;
     if (currentUser == null) return;
 
-    final targetMonth = DateTime(
-      _selectedMonth.year,
-      _selectedMonth.month,
-    );
-
-    final budgets = await _firestoreService.getCategoryBudgetsForMonth(
-      uid: currentUser.uid,
-      year: _selectedMonth.year,
-      month: _selectedMonth.month,
-    );
-
-    final spent = await _firestoreService.getSpentByCategoryForMonth(
-      uid: currentUser.uid,
-      year: _selectedMonth.year,
-      month: _selectedMonth.month,
-    );
-
-    if (!mounted) return;
-    if (targetMonth.year != _selectedMonth.year ||
-        targetMonth.month != _selectedMonth.month) {
-      return;
-    }
-
-    final updatedSpent = {...spent};
-    for (final category in budgets.keys) {
-      updatedSpent.putIfAbsent(category, () => 0);
-    }
+    final int year = _selectedMonth.year;
+    final int month = _selectedMonth.month;
+    final String monthKey = '$year-${month.toString().padLeft(2, '0')}';
 
     setState(() {
-      _budgetedCategories
-        ..clear()
-        ..addAll(budgets.keys);
-      _budgetLimits
-        ..clear()
-        ..addAll(budgets);
-      _spentAmounts
-        ..clear()
-        ..addAll(updatedSpent);
+      _isLoadingBudgets = true;
+
+      _budgetedCategories.clear();
+      _budgetLimits.clear();
+      _spentAmounts.clear();
     });
+
+    try {
+
+      final budgets = await _firestoreService.getCategoryBudgetsForMonth(
+        uid: currentUser.uid,
+        year: year,
+        month: month,
+      );
+
+      Map<String, double> spent = {};
+      try {
+        spent = await _firestoreService.getSpentByCategoryForMonth(
+          uid: currentUser.uid,
+          year: year,
+          month: month,
+        );
+      } catch (e) {
+
+        print('getSpentByCategoryForMonth failed for $monthKey: $e');
+        spent = {};
+      }
+
+      if (!mounted) return;
+
+      final String currentMonthKey =
+          '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+      if (currentMonthKey != monthKey) {
+   
+        return;
+      }
+
+      final updatedSpent = {...spent};
+      for (final category in budgets.keys) {
+        updatedSpent.putIfAbsent(category, () => 0);
+      }
+
+      setState(() {
+        _budgetedCategories
+          ..clear()
+          ..addAll(budgets.keys);
+        _budgetLimits
+          ..clear()
+          ..addAll(budgets);
+        _spentAmounts
+          ..clear()
+          ..addAll(updatedSpent);
+        _isLoadingBudgets = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingBudgets = false;
+      });
+
+      // ignore: avoid_print
+      print('Error loading budgets for $monthKey: $e');
+    }
   }
 
   @override
@@ -125,7 +150,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
             type: 'expense',
           ),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                _budgetedCategories.isEmpty &&
+                !_isLoadingBudgets) {
               return Center(
                 child: CircularProgressIndicator(
                   color: _themeService.primaryBlue,
@@ -189,9 +216,18 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           children: [
                             _buildMonthSelector(),
                             const SizedBox(height: 24),
-                            _buildBudgetedSection(expenseCategories),
-                            const SizedBox(height: 24),
-                            _buildNotBudgetedSection(expenseCategories),
+                            if (_isLoadingBudgets &&
+                                _budgetedCategories.isEmpty)
+                              Center(
+                                child: CircularProgressIndicator(
+                                  color: _themeService.primaryBlue,
+                                ),
+                              )
+                            else ...[
+                              _buildBudgetedSection(expenseCategories),
+                              const SizedBox(height: 24),
+                              _buildNotBudgetedSection(expenseCategories),
+                            ],
                             const SizedBox(height: 80),
                           ],
                         ),
@@ -206,6 +242,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       },
     );
   }
+
 
   Widget _buildMonthSelector() {
     return Row(
@@ -541,7 +578,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     await showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
@@ -579,9 +616,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: iconColor.withValues(
-                            alpha: 0.15,
-                          ),
+                          color: iconColor.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -659,7 +694,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () => Navigator.of(dialogContext).pop(),
                         child: const Text(
                           'CANCEL',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -678,7 +713,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           ),
                         ),
                         onPressed: () async {
-                          final navigator = Navigator.of(context);
+                          final navigator = Navigator.of(dialogContext);
                           final entered = double.tryParse(
                             limitController.text.trim(),
                           );
@@ -689,24 +724,29 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             return;
                           }
 
-                          setState(() {
-                            _budgetedCategories.add(categoryName);
-                            _budgetLimits[categoryName] = entered;
-                            _spentAmounts.putIfAbsent(categoryName, () => 0);
-                          });
+                          try {
+                            await _firestoreService.setBudgetLimit(
+                              uid: currentUser.uid,
+                              categoryName: categoryName,
+                              year: _selectedMonth.year,
+                              month: _selectedMonth.month,
+                              limit: entered,
+                            );
 
-                          await _firestoreService.setBudgetLimit(
-                            uid: currentUser.uid,
-                            categoryName: categoryName,
-                            year: _selectedMonth.year,
-                            month: _selectedMonth.month,
-                            limit: entered,
-                          );
-
-                          await _loadBudgetsForSelectedMonth();
-
-                          if (!mounted) return;
-                          Navigator.of(context).pop();
+                            await _loadBudgetsForSelectedMonth();
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to save budget: $e'),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (navigator.mounted) {
+                              navigator.pop();
+                            }
+                          }
                         },
                         child: const Text(
                           'SET',
@@ -723,5 +763,4 @@ class _BudgetScreenState extends State<BudgetScreen> {
       },
     );
   }
-
 }

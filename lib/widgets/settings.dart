@@ -1,8 +1,11 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:smartspend/services/theme_service.dart';
-import 'package:smartspend/widgets/export_screen.dart';
-import 'package:smartspend/widgets/backup_restore_screen.dart';
-import 'package:smartspend/widgets/delete_reset_screen.dart'; // Ensure this is imported if used directly, or handled via drawer
+// ✅ REMOVED: Unused imports
+// import 'package:smartspend/widgets/export_screen.dart';
+// import 'package:smartspend/widgets/backup_restore_screen.dart';
+// import 'package:smartspend/widgets/delete_reset_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,7 +25,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, _) {
         return Scaffold(
           body: Container(
-            // ✅ 1. Dynamic Gradient Background
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -50,15 +52,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(
-                                    _themeService.isDarkMode ? 0.3 : 0.05,
+                                  color: Colors.black.withValues(
+                                    alpha: _themeService.isDarkMode ? 0.3 : 0.05,
                                   ),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
-                            // ✅ 2. Back Icon Color adapts
                             child: Icon(
                               Icons.arrow_back_ios_new,
                               size: 20,
@@ -67,7 +68,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        // ✅ 3. Title Color adapts (Dark in Light Mode, White in Dark Mode)
                         Text(
                           "Preferences",
                           style: TextStyle(
@@ -145,8 +145,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: _themeService.primaryBlue.withOpacity(
-                                  0.05,
+                                color: _themeService.primaryBlue.withValues(
+                                  alpha: 0.05,
                                 ),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
@@ -181,7 +181,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 scale: 0.8,
                                 child: Switch(
                                   value: _remindEveryday,
-                                  activeColor: Colors.white,
+                                  activeThumbColor: Colors.white,
                                   activeTrackColor: _themeService.primaryBlue,
                                   inactiveThumbColor: Colors.grey.shade400,
                                   inactiveTrackColor: Colors.grey.shade700,
@@ -200,8 +200,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: () {},
                         ),
 
-                        // Note: Management & Application sections were moved to Drawer per your request
-                        // If you want them back here, let me know.
                         const SizedBox(height: 40),
                       ],
                     ),
@@ -215,13 +213,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- Helpers ---
+  // --- Helper Methods ---
 
   Widget _buildIconContainer(IconData icon) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: _themeService.primaryBlue.withOpacity(0.1),
+        color: _themeService.primaryBlue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(icon, color: _themeService.primaryBlue, size: 24),
@@ -234,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Text(
         title,
         style: TextStyle(
-          color: _themeService.primaryBlue, // Blue header matches your inspo
+          color: _themeService.primaryBlue,
           fontSize: 13,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.0,
@@ -252,12 +250,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: _themeService.cardBg, // Dynamic Card Background
+        color: _themeService.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-              _themeService.isDarkMode ? 0.2 : 0.05,
+            color: Colors.black.withValues(
+              alpha: _themeService.isDarkMode ? 0.2 : 0.05,
             ),
             blurRadius: 10,
             offset: const Offset(0, 4),
@@ -294,7 +292,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ... (Keep your _showRadioDialog, _showCurrencyDialog, _showDecimalDialog methods same as before)
   void _showRadioDialog(
     String title,
     List<String> options,

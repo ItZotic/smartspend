@@ -59,7 +59,6 @@ const List<_DefaultCategory> _defaultExpenseCategories = [
   ),
 ];
 
-// 🔹 Default INCOME categories – match your Income list
 const List<_DefaultCategory> _defaultIncomeCategories = [
   _DefaultCategory(
     id: 'salary',
@@ -211,6 +210,7 @@ class FirestoreService {
     required double amount,
     required String type,
     required String categoryId,
+    required String categoryName,
     String? note,
     required DateTime date,
   }) async {
@@ -221,6 +221,7 @@ class FirestoreService {
       'amount': positiveAmount,
       'type': type,
       'categoryId': categoryId,
+      'categoryName': categoryName, 
       'note': note ?? '',
       'date': Timestamp.fromDate(date),
       'createdAt': FieldValue.serverTimestamp(),
@@ -279,35 +280,36 @@ class FirestoreService {
     await _firestore.collection('transactions').doc(transactionId).update(data);
   }
 
-  Future<void> setBudgetLimit({
-    required String uid,
-    required String categoryName,
-    required int year,
-    required int month,
-    required double limit,
-  }) async {
-    final docId =
-        '${uid}_${categoryName}_${year}_${month.toString().padLeft(2, '0')}';
-    final docRef = _firestore.collection('categoryBudgets').doc(docId);
-    final data = {
-      'uid': uid,
-      'categoryName': categoryName,
-      'year': year,
-      'month': month,
-      'limit': limit,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
+Future<void> setBudgetLimit({
+  required String uid,
+  required String categoryName,
+  required int year,
+  required int month,
+  required double limit,
+}) async {
+  final monthKey = '$year-${month.toString().padLeft(2, '0')}';
+  final docId = '${uid}_${categoryName}_$monthKey';
 
-    final existing = await docRef.get();
-    if (existing.exists) {
-      await docRef.update(data);
-    } else {
-      await docRef.set({
-        ...data,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
+  final docRef = _firestore.collection('budgets').doc(docId);
+
+  final data = {
+    'uid': uid,
+    'categoryName': categoryName,
+    'month': monthKey,
+    'limit': limit,
+    'updatedAt': FieldValue.serverTimestamp(),
+  };
+
+  final existing = await docRef.get();
+  if (existing.exists) {
+    await docRef.update(data);
+  } else {
+    await docRef.set({
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
+}
 
   Future<void> setMonthlyBudget({
     required String uid,
@@ -354,30 +356,47 @@ class FirestoreService {
     return (data?['amount'] as num?)?.toDouble();
   }
 
-  Future<Map<String, double>> getCategoryBudgetsForMonth({
-    required String uid,
-    required int year,
-    required int month,
-  }) async {
-    final snapshot = await _firestore
-        .collection('categoryBudgets')
-        .where('uid', isEqualTo: uid)
-        .where('year', isEqualTo: year)
-        .where('month', isEqualTo: month)
-        .get();
+Future<Map<String, double>> getCategoryBudgetsForMonth({
+  required String uid,
+  required int year,
+  required int month,
+}) async {
+  final monthKey = '$year-${month.toString().padLeft(2, '0')}';
 
-    final budgets = <String, double>{};
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      final categoryName = data['categoryName'] as String?;
-      final limit = (data['limit'] as num?)?.toDouble();
-      if (categoryName != null && limit != null) {
-        budgets[categoryName] = limit;
-      }
-    }
+  // 🔹 Very simple: load ALL docs in 'budgets'
+  final snapshot = await _firestore.collection('budgets').get();
 
-    return budgets;
+  final budgets = <String, double>{};
+
+  // DEBUG: see what Firestore actually returns
+  // ignore: avoid_print
+  print('--- All budgets docs from Firestore ---');
+  for (final doc in snapshot.docs) {
+    // ignore: avoid_print
+    print('${doc.id} -> ${doc.data()}');
   }
+
+  for (final doc in snapshot.docs) {
+    final data = doc.data();
+
+    // Make sure uid + month match
+    final docUid = data['uid'] as String?;
+    final docMonth = data['month'] as String?;
+    if (docUid != uid || docMonth != monthKey) continue;
+
+    final categoryName = data['categoryName'] as String?;
+    final limit = (data['limit'] as num?)?.toDouble();
+
+    if (categoryName != null && limit != null) {
+      budgets[categoryName] = limit;
+    }
+  }
+
+  print('Budgets map for $uid @ $monthKey -> $budgets');
+
+  return budgets;
+}
+
 
   Future<Map<String, double>> getSpentByCategoryForMonth({
     required String uid,
@@ -398,7 +417,8 @@ class FirestoreService {
     final spent = <String, double>{};
     for (final doc in snapshot.docs) {
       final data = doc.data();
-      final categoryName = data['category'] as String?;
+      final categoryName =
+          (data['categoryName'] ?? data['category']) as String?;
       final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
 
       if (categoryName != null) {

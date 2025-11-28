@@ -169,32 +169,7 @@ const List<DefaultCategory> kDefaultExpenseCategories = [
   ),
 ];
 
-const Map<String, String> _defaultCategoryIconKeys = {
-  'Awards': 'awards',
-  'Coupons': 'coupons',
-  'Food & Dining': 'food_income',
-  'Grants': 'grants',
-  'Lottery': 'lottery',
-  'Refunds': 'refunds',
-  'Rental': 'rental',
-  'Salary': 'salary',
-  'Sale': 'sale',
-  'Bills': 'bills',
-  'Car': 'car',
-  'Clothing': 'clothing',
-  'Education': 'education',
-  'Electronics': 'electronics',
-  'Entertainment': 'entertainment',
-  'Food': 'food',
-  'Health': 'health',
-  'Home': 'home',
-  'Insurance': 'insurance',
-  'Shopping': 'shopping',
-  'Social': 'social',
-  'Sport': 'sport',
-  'Tax': 'tax',
-  'Telephone': 'telephone',
-};
+// ✅ REMOVED: _defaultCategoryIconKeys (unused)
 
 class _CategoryItem {
   final String id;
