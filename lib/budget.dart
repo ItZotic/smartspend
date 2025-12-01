@@ -113,10 +113,21 @@ class _BudgetScreenState extends State<BudgetScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // BUILD
-  // ---------------------------------------------------------------------------
+  Future<void> _removeBudgetForCategory(String categoryName) async {
+    setState(() {
+      _budgetedCategories.remove(categoryName);
+      _budgetLimits.remove(categoryName);
+    });
 
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Removed budget for "$categoryName".'),
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
