@@ -347,7 +347,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
   final iconOption = getCategoryIconOptionFromData(categoryData);
   final iconColor = getCategoryIconBgColor(categoryData);
 
-  // No longer tracking spent → progress always 0
   const double progress = 0.0;
 
   return Container(
