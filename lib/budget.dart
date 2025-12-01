@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -331,7 +331,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   (category) => _buildBudgetedRow(
                     category,
                     _budgetLimits[category] ?? 0,
-                    _spentAmounts[category] ?? 0,
                   ),
                 )
                 .toList(),
@@ -340,124 +339,120 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  Widget _buildBudgetedRow(
-    String category,
-    double budgetAmount,
-    double spentAmount,
-  ) {
-    final categoryData = _getCategoryMeta(category);
-    final iconOption = getCategoryIconOptionFromData(categoryData);
-    final iconColor = getCategoryIconBgColor(categoryData);
+ Widget _buildBudgetedRow(
+  String category,
+  double budgetAmount,
+) {
+  final categoryData = _getCategoryMeta(category);
+  final iconOption = getCategoryIconOptionFromData(categoryData);
+  final iconColor = getCategoryIconBgColor(categoryData);
 
-    final progress = budgetAmount == 0
-        ? 0.0
-        : (spentAmount / budgetAmount).clamp(0.0, 1.0);
+  // No longer tracking spent → progress always 0
+  const double progress = 0.0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _themeService.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+  return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: _themeService.cardBg,
+      borderRadius: BorderRadius.circular(18),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black26.withOpacity(0.04),
+          blurRadius: 12,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.15),
+            shape: BoxShape.circle,
           ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              iconOption.icon,
-              color: iconColor,
-              size: 22,
-            ),
+          child: Icon(
+            iconOption.icon,
+            color: iconColor,
+            size: 22,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  category,
-                  style: TextStyle(
-                    color: _themeService.textMain,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    backgroundColor: _themeService.primaryBlue.withValues(
-                      alpha: 0.15,
-                    ),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _themeService.primaryBlue,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Spent ${_themeService.formatCurrency(spentAmount)} of ${_themeService.formatCurrency(budgetAmount)}",
-                  style: TextStyle(color: _themeService.textSub, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // ⬇️ THIS IS THE NEW PART: EDIT + REMOVE
-          Column(
-            mainAxisSize: MainAxisSize.min,
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _themeService.textMain,
-                  side: BorderSide(
-                    color: _themeService.textSub.withValues(alpha: 0.3),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () => _showSetBudgetDialog(category),
-                child: const Text(
-                  "EDIT",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              Text(
+                category,
+                style: TextStyle(
+                  color: _themeService.textMain,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 6),
-              TextButton(
-                onPressed: () => _removeBudgetForCategory(category),
-                child: Text(
-                  'REMOVE',
-                  style: TextStyle(
-                    color: _themeService.textSub,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor:
+                      _themeService.primaryBlue.withOpacity(0.15),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    _themeService.primaryBlue,
                   ),
                 ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Limit: ${_themeService.formatCurrency(budgetAmount)}",
+                style: TextStyle(color: _themeService.textSub, fontSize: 13),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(width: 12),
+        Column(
+          children: [
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _themeService.textMain,
+                side: BorderSide(
+                  color: _themeService.textSub.withOpacity(0.3),
+                ),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () => _showSetBudgetDialog(category),
+              child: const Text(
+                "EDIT",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextButton(
+              onPressed: () => _removeBudgetForCategory(category),
+              child: Text(
+                "REMOVE",
+                style: TextStyle(
+                  color: _themeService.textSub,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        )
+      ],
+    ),
+  );
+}
+
 
   Widget _buildNotBudgetedSection(List<String> allCategories) {
     if (allCategories.isEmpty) {
