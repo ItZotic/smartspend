@@ -279,51 +279,55 @@ class FirestoreService {
     required String transactionId,
     required Map<String, dynamic> data,
   }) async {
-    await _firestore.collection('transactions').doc(transactionId).update(data);
+    await _firestore
+        .collection('transactions')
+        .doc(transactionId)
+        .update(data);
   }
 
-Future<void> setBudgetLimit({
-  required String uid,
-  required String categoryName,
-  required int year,
-  required int month,
-  required double limit,
-}) async {
-  final monthKey = '$year-${month.toString().padLeft(2, '0')}';
-  final docId = '${uid}_${categoryName}_$monthKey';
+  Future<void> setBudgetLimit({
+    required String uid,
+    required String categoryName,
+    required int year,
+    required int month,
+    required double limit,
+  }) async {
+    final monthKey = '$year-${month.toString().padLeft(2, '0')}';
+    final docId = '${uid}_${categoryName}_$monthKey';
 
-  final docRef = _firestore.collection('budgets').doc(docId);
+    final docRef = _firestore.collection('budgets').doc(docId);
 
-  final data = {
-    'uid': uid,
-    'categoryName': categoryName,
-    'month': monthKey,
-    'limit': limit,
-    'updatedAt': FieldValue.serverTimestamp(),
-  };
+    final data = {
+      'uid': uid,
+      'categoryName': categoryName,
+      'month': monthKey,
+      'limit': limit,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
 
-  final existing = await docRef.get();
-  if (existing.exists) {
-    await docRef.update(data);
-  } else {
-    await docRef.set({
-      ...data,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    final existing = await docRef.get();
+    if (existing.exists) {
+      await docRef.update(data);
+    } else {
+      await docRef.set({
+        ...data,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
-}
-Future<void> deleteBudgetLimit({
-  required String uid,
-  required String categoryName,
-  required int year,
-  required int month,
-}) async {
-  final monthKey = '$year-${month.toString().padLeft(2, '0')}';
-  final docId = '${uid}_${categoryName}_$monthKey';
 
-  final docRef = _firestore.collection('budgets').doc(docId);
-  await docRef.delete();
-}
+  Future<void> deleteBudgetLimit({
+    required String uid,
+    required String categoryName,
+    required int year,
+    required int month,
+  }) async {
+    final monthKey = '$year-${month.toString().padLeft(2, '0')}';
+    final docId = '${uid}_${categoryName}_$monthKey';
+
+    final docRef = _firestore.collection('budgets').doc(docId);
+    await docRef.delete();
+  }
 
   Future<void> setMonthlyBudget({
     required String uid,
@@ -441,22 +445,6 @@ Future<Map<String, double>> getCategoryBudgetsForMonth({
     }
 
     return spent;
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> streamExpensesForMonth({
-    required String uid,
-    required int year,
-    required int month,
-  }) {
-    final start = DateTime(year, month, 1);
-    final end = DateTime(year, month + 1, 1);
-
-    return _firestore
-        .collection('transactions')
-        .where('uid', isEqualTo: uid)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('date', isLessThan: Timestamp.fromDate(end))
-        .snapshots();
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> streamMonthlyBudget({

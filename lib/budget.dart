@@ -83,7 +83,18 @@ class _BudgetScreenState extends State<BudgetScreen> {
         month: month,
       );
 
+      final spent = await _firestoreService.getSpentByCategoryForMonth(
+        uid: currentUser.uid,
+        year: year,
+        month: month,
+      );
+
       if (!mounted) return;
+
+      final updatedSpent = {...spent};
+      for (final category in budgets.keys) {
+        updatedSpent.putIfAbsent(category, () => 0);
+      }
 
       setState(() {
         _budgetedCategories
@@ -99,52 +110,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
       setState(() {
         _isLoadingBudgets = false;
       });
-    }
-  }
-
-  Future<void> _removeBudgetForCategory(String categoryName) async {
-    final currentUser = user;
-    if (currentUser == null) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove budget'),
-        content: Text(
-          'Remove the budget for "$categoryName" for $_monthLabel?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              'REMOVE',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await _firestoreService.deleteBudgetLimit(
-        uid: currentUser.uid,
-        categoryName: categoryName,
-        year: _selectedMonth.year,
-        month: _selectedMonth.month,
-      );
-
-      await _loadBudgetsForSelectedMonth();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to remove budget: $e')),
-      );
     }
   }
 
@@ -198,97 +163,65 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
             _expenseCategoryMeta = expenseCategoryMeta;
 
-            // 2) Stream transactions for this month and compute spent per category
-            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _firestoreService.streamExpensesForMonth(
-                uid: user!.uid,
-                year: _selectedMonth.year,
-                month: _selectedMonth.month,
-              ),
-              builder: (context, txSnapshot) {
-                final spentByCategory = <String, double>{};
-
-                final txDocs = txSnapshot.data?.docs ?? [];
-                for (final doc in txDocs) {
-                  final data = doc.data();
-                  // supports either "categoryName" or legacy "category"
-                  final categoryName =
-                      (data['categoryName'] ?? data['category']) as String?;
-                  final amount =
-                      (data['amount'] as num?)?.toDouble() ?? 0.0;
-
-                  if (categoryName != null) {
-                    spentByCategory.update(
-                      categoryName,
-                      (current) => current + amount.abs(),
-                      ifAbsent: () => amount.abs(),
-                    );
-                  }
-                }
-
-                return Scaffold(
-                  body: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [_themeService.bgTop, _themeService.bgBottom],
-                      ),
-                    ),
-                    child: SafeArea(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16.0,
-                              vertical: 12.0,
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Budgets",
-                                style: TextStyle(
-                                  color: _themeService.textMain,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: ListView(
-                              controller: widget.scrollController,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              children: [
-                                _buildMonthSelector(),
-                                const SizedBox(height: 24),
-                                if (_isLoadingBudgets &&
-                                    _budgetedCategories.isEmpty)
-                                  Center(
-                                    child: CircularProgressIndicator(
-                                      color: _themeService.primaryBlue,
-                                    ),
-                                  )
-                                else ...[
-                                  _buildBudgetedSection(
-                                    expenseCategories,
-                                    spentByCategory,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _buildNotBudgetedSection(expenseCategories),
-                                ],
-                                const SizedBox(height: 80),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+            return Scaffold(
+              body: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [_themeService.bgTop, _themeService.bgBottom],
                   ),
-                );
-              },
+                ),
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 12.0,
+                        ),
+                        child: Center(
+                          child: Text(
+                            "Budgets",
+                            style: TextStyle(
+                              color: _themeService.textMain,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView(
+                          controller: widget.scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          children: [
+                            _buildMonthSelector(),
+                            const SizedBox(height: 24),
+                            if (_isLoadingBudgets && _budgetedCategories.isEmpty)
+                              Center(
+                                child: CircularProgressIndicator(
+                                  color: _themeService.primaryBlue,
+                                ),
+                              )
+                            else ...[
+                              _buildBudgetedSection(
+                                expenseCategories,
+                              ),
+                              const SizedBox(height: 24),
+                              _buildNotBudgetedSection(expenseCategories),
+                            ],
+                            const SizedBox(height: 80),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             );
           },
         );
@@ -332,10 +265,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  Widget _buildBudgetedSection(
-    List<String> allCategories,
-    Map<String, double> spentByCategory,
-  ) {
+  Widget _buildBudgetedSection(List<String> allCategories) {
     if (allCategories.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -401,7 +331,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   (category) => _buildBudgetedRow(
                     category,
                     _budgetLimits[category] ?? 0,
-                    spentByCategory[category] ?? 0,
+                    _spentAmounts[category] ?? 0,
                   ),
                 )
                 .toList(),
@@ -488,6 +418,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             ),
           ),
           const SizedBox(width: 12),
+          // ⬇️ THIS IS THE NEW PART: EDIT + REMOVE
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -498,9 +429,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     color: _themeService.textSub.withValues(alpha: 0.3),
                   ),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                      horizontal: 12, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
